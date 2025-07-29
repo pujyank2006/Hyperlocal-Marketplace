@@ -1,0 +1,14 @@
+Step 1: git checkout -b Backend-works
+Step 2: Do all your changes here.
+Step 3: git push origin Backend-works
+Step 4: Check the website for pull request
+Step 5: Accept the pull request
+Step 6: 
+    If you're continuing work on Backend-works:
+        git checkout Backend-works
+        git pull origin main
+    But if you already merged Backend-works into main and you're done working on it:
+    You can either delete the branch:       
+        git branch -d Backend-works   
+        git push origin --delete Backend-works
+Step 7: done
