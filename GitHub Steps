@@ -1,14 +1,18 @@
-Step 1: git checkout -b Backend-works
-Step 2: Do all your changes here.
-Step 3: Go to Main: git push origin Backend-works
+Step 1: Create a New Branch; git checkout -b Backend-works
+Step 2: Do Your Work; 
+        git add .
+        git commit -m Your meaningful commit message
+Step 3: Push the Branch to GitHub; git push origin Backend-works
 Step 4: Check the website for pull request
 Step 5: Accept the pull request
 Step 6: 
-    If you're continuing work on Backend-works:
+    Sync Your Local main with GitHub; 
+        git checkout main
+        git pull origin main
+Step 7 (Optional): Update Your Feature Branch
+    If you want to continue using Backend-works, sync it too:
         git checkout Backend-works
         git pull origin main
-    But if you already merged Backend-works into main and you're done working on it:
-    You can either delete the branch:       
-        git branch -d Backend-works   
+    Or delete it if you're done:
+        git branch -d Backend-works
         git push origin --delete Backend-works
-Step 7: done
