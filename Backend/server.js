@@ -8,7 +8,7 @@ const PORT = 9000;
 app.use(express.json());
 
 // Connecting MongoDB
-connectMongodb("");
+// connectMongodb("");
 app.listen(PORT, () => {
     console.log(`Server is running, at ${PORT}`);
 });
