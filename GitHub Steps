@@ -13,6 +13,9 @@ Step 7 (Optional): Update Your Feature Branch
     If you want to continue using Backend-works, sync it too:
         git checkout Backend-works
         git pull origin main
+        then (in main), 
+        git pull origin Backend-works
+        git push origin main
     Or delete it if you're done:
         git branch -d Backend-works
         git push origin --delete Backend-works
