@@ -1,0 +1,5 @@
+Step 1: "C:\Program Files\MongoDB\Server\8.0\bin\mongod.exe" --port 27018 --dbpath C:\data\db2
+Step 2: You can connect
+	To work with commands?
+	Step 2.1: mongosh mongodb://localhost:27018
+Step 3: You can access them.
