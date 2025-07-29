@@ -1,6 +1,6 @@
 Step 1: git checkout -b Backend-works
 Step 2: Do all your changes here.
-Step 3: git push origin Backend-works
+Step 3: Go to Main: git push origin Backend-works
 Step 4: Check the website for pull request
 Step 5: Accept the pull request
 Step 6: 
