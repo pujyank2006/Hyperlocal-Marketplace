@@ -9,6 +9,7 @@ app.use(express.json());
 
 // Connecting MongoDB
 // connectMongodb("");
+// Starting a server
 app.listen(PORT, () => {
     console.log(`Server is running, at ${PORT}`);
 });
