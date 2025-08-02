@@ -1,7 +1,7 @@
 // dotenv file to store JWT_SECRET
 require('dotenv').config();
 
-// acquring the requied modules/files
+// Acquring the requied modules/files
 const express = require('express');
 const connectMongodb = require("./connectDb");
 const authRoutes = require('./routes/authRouter');
