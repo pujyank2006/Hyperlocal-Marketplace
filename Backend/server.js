@@ -1,3 +1,4 @@
+// Server of Hyperlocal Marketplace
 // dotenv file to store JWT_SECRET
 require('dotenv').config();
 
