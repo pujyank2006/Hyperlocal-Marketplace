@@ -2,7 +2,7 @@
 function Footer() {
   return (
     <div>
-      copyright symbol author name etc...
+          &copy; {new Date().getFullYear()} Pujyank Komari. &nbsp; All rights reserved.
     </div>
   )
 }
