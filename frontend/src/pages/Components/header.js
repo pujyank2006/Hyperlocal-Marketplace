@@ -3,7 +3,7 @@ import styles from './header.module.css';
 import logo from "../assets/favicon.png";
 import title from "../assets/Title.png";
 
-function header() {
+function Header() {
   return (
     <div className={styles.mainHeader}>
       <Link to="/">
@@ -16,4 +16,4 @@ function header() {
   )
 }
 
-export default header
+export default Header
