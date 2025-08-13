@@ -1,9 +1,15 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import styles from './header.module.css';
 import logo from "../assets/favicon.png";
-import title from "../assets/Title.png";
+import title from "../assets/title.png";
 
 function Header() {
+  const navigate = useNavigate();
+
+  function handleSignupClick () {
+    navigate('/signup');
+  };
+
   return (
     <div className={styles.mainHeader}>
       <Link to="/">
@@ -11,7 +17,7 @@ function Header() {
         &nbsp;
         <img alt='pic' src={title} className = {styles.title} />
       </Link>
-      <Link to="/signup">Signup</Link>
+      <button onClick={ handleSignupClick } className={styles.button}>Signup</button>
     </div>
   )
 }
