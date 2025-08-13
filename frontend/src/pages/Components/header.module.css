@@ -18,4 +18,13 @@
     width: auto;
 }
 
-/* Style Signup button */
+.button{
+    background-color: black;
+    color: #f9f9f9;
+    padding: 10px;
+    margin: 10px;
+    font-size: medium;
+    border-radius: 20px;
+    border-style: none;
+    cursor: pointer;
+}
