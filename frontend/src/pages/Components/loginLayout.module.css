@@ -1,5 +1,7 @@
 .container {
     display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
     min-height: 100vh;
 }
 
@@ -10,6 +12,7 @@
     background-color: white;
     margin-left: 15px;
     margin-right: 15px;
+    min-height: 300px;
 }
 
 .right {
@@ -42,4 +45,27 @@
     align-items: center;
     flex: 1;
     text-align: center;
+}
+
+@media (max-width: 1024px) {
+    .container {
+        flex-direction: column;
+        align-items: center;
+    }
+    .left, .right {
+        flex: unset;
+        width: 90%;
+        margin: 10px 0;
+    }
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+    .right {
+        padding: 2rem;
+    }
+    .left {
+        background-size: cover; /* Fill more on mobile */
+        min-height: 200px;
+    }
 }
