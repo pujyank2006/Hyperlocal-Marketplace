@@ -1,6 +1,6 @@
 import Footer from './footer';
 import Header from './header';
-import styles from './loginLayout.module.css';
+import styles from '../ComponentStyles/loginLayout.module.css';
 
 function Layout({ children }) {
     return (
