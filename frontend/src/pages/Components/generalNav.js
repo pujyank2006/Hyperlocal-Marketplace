@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import styles from './generalNav.module.css';
+import styles from '../ComponentStyles/generalNav.module.css';
 
 function GeneralNav() {
   return (
