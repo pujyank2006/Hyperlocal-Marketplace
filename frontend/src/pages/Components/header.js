@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
-import styles from './header.module.css';
+import styles from '../ComponentStyles/header.module.css';
 import logo from "../assets/favicon.png";
-import title from "../assets/title.png";
+import title from "../assets/Title.png";
 
 function Header() {
   const navigate = useNavigate();
