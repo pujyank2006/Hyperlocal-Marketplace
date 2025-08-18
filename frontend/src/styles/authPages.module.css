@@ -22,10 +22,9 @@ input {
   cursor: pointer;
 }
 
-.eachList{
-    margin: 10px;
-    padding: 10px;
-    display: flex;
-    align-items: center;
-    gap: 25px;
+.eachList {
+  display: flex; /* Enables flexbox for the container */
+  flex-direction: column; /* Stacks children vertically */
+  align-items: flex-start; /* Aligns items to the start of the cross-axis */
+  margin-bottom: 15px; /* Adds space between each input group */
 }
