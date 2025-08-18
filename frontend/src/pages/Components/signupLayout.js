@@ -5,14 +5,15 @@ import title from "../assets/Title.png";
 
 import Footer from './footer';
 import styles from '../ComponentStyles/authLayout.module.css';
+import { handleSuccess } from '../../utils';
 
-function Layout({ children }) {
+function SignupLayout({ children }) {
     const navigate = useNavigate();
 
-    function handleSignupClick() {
+    function handleLoginClick() {
         setTimeout(() => {
-            alert("Moving to Signup Page");
-            navigate('/signup');
+            handleSuccess("Moving to Login Page");
+            navigate('/login');
         }, 1500);
     };
 
@@ -24,7 +25,7 @@ function Layout({ children }) {
                     &nbsp;
                     <img alt='pic' src={title} className={styles.title} />
                 </Link>
-                <button onClick={handleSignupClick} className={styles.button}>Signup</button>
+                <button onClick={handleLoginClick} className={styles.button}>Login</button>
             </div>
             <div className={styles.container}>
                 <div className={styles.left}></div> {/* Image section */}
@@ -37,4 +38,4 @@ function Layout({ children }) {
     );
 }
 
-export default Layout;
+export default SignupLayout;

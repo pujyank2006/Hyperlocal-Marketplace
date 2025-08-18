@@ -4,7 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import { handleError, handleSuccess } from '../utils';
 
 // Importing Style
-import styles from "../styles/loginPage.module.css";
+import styles from "../styles/authPages.module.css";
 // Layout 
 import LoginLayout from "./Components/loginLayout";
 
@@ -78,7 +78,7 @@ function Login() {
           </li>
 
           <li>
-            <div>
+            <div className={styles.eachList}>
             <label>Password: </label>
               <input type="password" placeholder="Password" name="password" onChange={handleChange} />
             </div>
