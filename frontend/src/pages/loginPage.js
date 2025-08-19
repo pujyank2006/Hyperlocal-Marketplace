@@ -85,7 +85,7 @@ function Login() {
           </li>
         </ul>
 
-        <button className={styles.login} type="submit">
+        <button className={styles.button} type="submit">
           Login
         </button>
 

@@ -103,7 +103,7 @@ function SignupPage() {
       <form onSubmit={handleSignup}>
         {currentStep === 1 && (
           <>
-            <h1>Connect with your community!</h1>
+            <h1>Start connecting!</h1>
             <ul className={styles.list}>
               <li>
                 <div className={styles.eachList}>
@@ -131,7 +131,7 @@ function SignupPage() {
 
         {currentStep === 2 && (
           <>
-            <h1>Almost there!</h1>
+            <h1>Almost there!!</h1>
             <ul className={styles.list}>
               <li>
                 <div className={styles.eachList}>
@@ -166,7 +166,7 @@ function SignupPage() {
 
         {currentStep === 3 && (
           <>
-            <h1>one last step!!</h1>
+            <h1>one last step!!!</h1>
 
             <ul className={styles.list}>
               <li>
@@ -193,12 +193,12 @@ function SignupPage() {
         < ToastContainer />
 
         {currentStep > 1 && (
-          <button type="button" className={styles.login} onClick={prevStep}>Previous</button>
+          <button type="button" className={styles.button} onClick={prevStep}>Previous</button>
         )}
         {currentStep < 3 ? (
-          <button type="button" className={styles.login} onClick={nextStep}>Next</button>
+          <button type="button" className={styles.button} onClick={nextStep}>Next</button>
         ) : (
-          <button type="submit" className={styles.login}>Submit</button>
+          <button type="submit" className={styles.button}>Submit</button>
         )}
 
       </form>
