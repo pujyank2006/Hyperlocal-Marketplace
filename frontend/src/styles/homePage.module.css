@@ -1,0 +1,91 @@
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow-x: hidden; /* disable horizontal scroll */
+    overflow-y: auto;   /* allow vertical scroll */
+}
+
+.main {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+
+    /* Fullscreen responsive background */
+    background-image: url("D:\FSD\Hyperlocal Marketplace\frontend\src\pages\assets\logo9.svg");
+    background-size: cover;      /* fills entire screen */
+    background-position: center;
+    background-attachment: fixed; /* nice parallax-like effect */
+    background-repeat: no-repeat;
+}
+
+.display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+
+    background: rgba(0, 0, 0, 0.5); /* blackish glass */
+    backdrop-filter: blur(12px); /* glass effect */
+    padding: 40px;
+    border-radius: 25px;
+    text-align: center;
+    color: #fff;
+    width: 350px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+.display img {
+    width: 100px;
+    margin-bottom: 15px;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.2));
+}
+
+.display p {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 20px;
+    text-shadow: 0px 2px 4px rgba(0,0,0,0.4);
+}
+
+.buttonClass {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Stylish button */
+.button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    background: linear-gradient(135deg, #434343, #000000); /* dark gradient */
+    color: white;
+    font-weight: bold;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.button:hover {
+    background: linear-gradient(135deg, #2c3e50, #000000);
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+}
+
+.footer{
+    display: flex;
+    justify-content: center;
+    background-color: black;
+    color: white;
+}

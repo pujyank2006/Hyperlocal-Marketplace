@@ -1,6 +1,6 @@
 .list {
-    list-style: none;
-    padding: 10px;
+  list-style: none;
+  padding: 10px;
 }
 
 input {
@@ -10,21 +10,21 @@ input {
   border-radius: 10px;
 }
 
-.login {
+.button {
   background-color: black;
   color: white;
   border: none;
-  width: 100px;
-  padding: 10px;
   margin: 10px;
-  border-radius: 20px;
-  font-size: medium;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: bold;
   cursor: pointer;
 }
 
 .eachList {
-  display: flex; /* Enables flexbox for the container */
-  flex-direction: column; /* Stacks children vertically */
-  align-items: flex-start; /* Aligns items to the start of the cross-axis */
-  margin-bottom: 15px; /* Adds space between each input group */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 15px;
 }
