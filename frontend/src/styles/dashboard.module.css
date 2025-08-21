@@ -1,0 +1,36 @@
+* {
+    padding: 0;
+    margin: 0;
+}
+
+.mainHeader{
+    background-color: black;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    /* border-radius: 20px; */
+    padding: 0.5rem 1rem;
+}
+
+.mainHeader a {
+    text-decoration: none;
+    color: #f9f9f9;
+}
+
+.title{
+    height: 50px;
+    width: auto;
+}
+
+.button{
+    background-color: #f9f9f9;
+    color: black;
+    padding: 10px 12px;
+    margin: 10px;
+    font-size: 1rem;
+    font-weight: bold;
+    border-radius: 12px;
+    border-style: none;
+    cursor: pointer;
+}
