@@ -9,8 +9,8 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 10px;
-    /* border-radius: 20px; */
     padding: 0.5rem 1rem;
+    /* border-radius: 20px; */
 }
 
 .mainHeader a {
@@ -24,13 +24,8 @@
 }
 
 .button{
-    background-color: #f9f9f9;
-    color: black;
+    background-color: black;
     padding: 10px 12px;
-    margin: 10px;
-    font-size: 1rem;
-    font-weight: bold;
-    border-radius: 12px;
     border-style: none;
     cursor: pointer;
 }
