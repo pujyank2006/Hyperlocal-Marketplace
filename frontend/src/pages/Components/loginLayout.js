@@ -11,9 +11,8 @@ function Layout({ children }) {
 
     function handleSignupClick() {
         setTimeout(() => {
-            alert("Moving to Signup Page");
             navigate('/signup');
-        }, 1500);
+        }, 750);
     };
 
     return (
