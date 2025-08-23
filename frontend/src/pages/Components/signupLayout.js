@@ -12,9 +12,8 @@ function SignupLayout({ children }) {
 
     function handleLoginClick() {
         setTimeout(() => {
-            handleSuccess("Moving to Login Page");
             navigate('/login');
-        }, 1500);
+        }, 750);
     };
 
     return (
