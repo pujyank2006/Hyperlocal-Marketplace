@@ -1,4 +1,7 @@
+import { useNavigate } from "react-router-dom";
+
 function AccountDetails({ open, onClose }) {
+    const navigate = useNavigate();
     const OVERLAY = {
         position: "absolute",
         top: "65px",     // adjust based on your navbar height
@@ -12,18 +15,24 @@ function AccountDetails({ open, onClose }) {
         zIndex: 1000,
     };
 
-    const BODY = {
-        padding: "8px 12px",
-        cursor: "pointer",
+    const BUTTON = {
+        padding: '10px',
+        textAlign: 'center',
+        cursor: 'pointer',
+        fontSize: '20px',
+    };
+
+    const DIVIDER = {
+        borderTop: '1px solid #000',
     };
 
     if (!open) return null;
+
     return (
         <div style={OVERLAY}>
-            <div style={BODY}>
-                <div style={BUTTON}>profile</div>
-                <div style={BUTTON}>logout</div>
-            </div>
+            <div style={BUTTON} onClick={() => navigate('/profile')}>Profile</div>
+            <div style={DIVIDER}></div>
+            <div style={BUTTON} onClick={() => alert("Logout")}>Logout</div>
         </div>
     )
 }
