@@ -19,7 +19,7 @@ function Dashboard() {
           &nbsp;
           <img alt='pic' src={title2} className={styles.title} />
         </Link>
-        <button className={styles.button} onClick={() => setAccountOpen(true)}><img alt='pic' src={account} width='40px' height='40px' /></button>
+        <button className={styles.button} onClick={() => setAccountOpen(!isAccountOpen)}><img alt='pic' src={account} width='40px' height='40px' /></button>
         <AccountDetails open = {isAccountOpen} onClose = {() => setAccountOpen(false)}></AccountDetails>
       </div>
     </>
