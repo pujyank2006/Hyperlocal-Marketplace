@@ -11,16 +11,31 @@ function Profile() {
   const [isAccountOpen, setAccountOpen] = useState(false);
 
   return (
+    <>
+      <div className={styles.mainHeader}>
+        <Link to="/">
+          <img alt='pic' src={logo} width='40px' height='40px' />
+          &nbsp;
+          <img alt='pic' src={title2} className={styles.title} />
+        </Link>
+        <button className={styles.button} onClick={() => setAccountOpen(!isAccountOpen)}><img alt='pic' src={account} width='40px' height='40px' /></button>
+        <AccountDetails open={isAccountOpen} onClose={() => setAccountOpen(false)}></AccountDetails>
+      </div>
 
-    <div className={styles.mainHeader}>
-      <Link to="/">
-        <img alt='pic' src={logo} width='40px' height='40px' />
-        &nbsp;
-        <img alt='pic' src={title2} className={styles.title} />
-      </Link>
-      <button className={styles.button} onClick={() => setAccountOpen(!isAccountOpen)}><img alt='pic' src={account} width='40px' height='40px' /></button>
-      <AccountDetails open={isAccountOpen} onClose={() => setAccountOpen(false)}></AccountDetails>
-    </div>
+      <div className={styles.information}>
+        <div className={styles.detailsPage}>
+          <div className={styles.personalDetails}>
+            personal details
+          </div>
+          <div className={styles.locationDetails}>
+              location details
+          </div>
+        </div>
+        <div className={styles.listings}>
+          Currently empty
+        </div>
+      </div>
+    </>
   )
 }
 
