@@ -1,12 +1,15 @@
 // dotenv file to store JWT_SECRET
 require('dotenv').config();
 
-// Acquring the requied modules/files
+// Acquring the requied modules
 const express = require('express');
 const connectMongodb = require("./connectDb");
-const authRoutes = require('./routes/authRouter');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+
+// Acquring the requied files
+const authRoutes = require('./routes/authRouter');
+const userDetailsRoutes = require('./routes/userDetailsRouter');
 
 const app = express();
 app.use(bodyParser.json());
@@ -15,6 +18,10 @@ const PORT = process.env.PORT || 8080;
 
 //Authentication Route
 app.use('/auth', authRoutes);
+
+//User Details retrieving route
+app.use('/api', userDetailsRoutes);
+
 
 // Connecting MongoDB
 connectMongodb("mongodb://localhost:27017/Hyperlocal-Marketplace")
