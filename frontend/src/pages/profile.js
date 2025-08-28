@@ -1,14 +1,38 @@
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import logo from "./assets/favicon.png";
 import title2 from "./assets/Title2.png";
 import account from "./assets/accountCircle.svg";
-import styles from "../styles/dashboard.module.css";
+import styles from "../styles/profile.module.css";
 import AccountDetails from './Components/accountDetails';
 
 function Profile() {
   const [isAccountOpen, setAccountOpen] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      return;
+    }
+    const url = "http://localhost:9000/api/loggedInUser";
+    fetch(url, {
+      method: 'GET',
+      headers: {
+        "Content-type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => setUser(data))
+      .catch(err => console.error("Error fetching user: ", err));
+  }, []);
+
+  if (!user) {
+    return <p>Loading...</p>
+  }
 
   return (
     <>
@@ -25,10 +49,16 @@ function Profile() {
       <div className={styles.information}>
         <div className={styles.detailsPage}>
           <div className={styles.personalDetails}>
-            personal details
+            Image will be set
+            <h1>{user.name}</h1>
+            <p>{user.email}</p>
+            <p>{user.phone}</p>
           </div>
           <div className={styles.locationDetails}>
-              location details
+            <p>{user.state}</p>
+            <p>{user.city}</p>
+            <p>{user.area}</p>
+            <p>{user.pincode}</p>
           </div>
         </div>
         <div className={styles.listings}>

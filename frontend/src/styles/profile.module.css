@@ -1,0 +1,77 @@
+* {
+    padding: 0;
+    margin: 0;
+}
+
+.mainHeader {
+    background-color: black;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    /* border-radius: 20px; */
+    height: 65px;
+}
+
+.mainHeader a {
+    text-decoration: none;
+    color: #f9f9f9;
+}
+
+.title {
+    height: 50px;
+    width: auto;
+}
+
+.button {
+    background-color: black;
+    padding: 10px 12px;
+    border-style: none;
+    cursor: pointer;
+}
+
+.information {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    /* left column 1 part, right column 2 parts */
+    gap: 20px;
+    /* space between columns */
+    height: 100vh;
+    /* optional: make it fill full height */
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+
+.detailsPage {
+    margin-left: 70px;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    /* space between personal and location */
+}
+
+.personalDetails,
+.locationDetails,
+.listings {
+    background-color: #f9f9f9;
+    /* just to see boxes */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.personalDetails {
+    display: flex;
+    flex-direction: Column;
+    /* gap: 15px; */
+    padding: 25px;
+}
+
+.listings {
+    margin-right: 70px;
+    margin-top: 20px;
+    width: 90%;
+    height: 100%;
+    /* take full vertical space */
+}
