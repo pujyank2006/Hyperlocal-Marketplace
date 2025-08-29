@@ -55,10 +55,10 @@ function Profile() {
             <p>{user.phone}</p>
           </div>
           <div className={styles.locationDetails}>
-            <p>{user.state}</p>
-            <p>{user.city}</p>
-            <p>{user.area}</p>
-            <p>{user.pincode}</p>
+            <label>Add your full address: </label>
+            <input type='text' placeholder='Full address' />
+            <h2>{user.area}, {user.city}</h2>
+            <h2>{user.pincode}</h2>
           </div>
         </div>
         <div className={styles.listings}>
