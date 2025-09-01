@@ -34,7 +34,11 @@ const userSchema = new schema({
     password: {
         type: String,
         required: true,
-    }
+    },
+    address: {
+        type: String,
+        required: true,
+    },
 }, { timestamps: true });
 
 const userDetails = mongoose.model('user', userSchema);
