@@ -14,6 +14,7 @@ const userDetailsRoutes = require('./routes/userDetailsRouter');
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
+app.use(express.json());
 const PORT = process.env.PORT || 8080;
 
 //Authentication Route
