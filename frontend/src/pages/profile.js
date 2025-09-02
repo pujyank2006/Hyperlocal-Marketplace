@@ -14,13 +14,14 @@ function Profile() {
   const [user, setUser] = useState(null);
   const [showInput, setShowInput] = useState(false);
   const [address, setAddress] = useState("");
+  const [isaddress, setIsaddress] = useState(false);
 
   const handleAddressChange = (e) => {
     setAddress(e.target.value);
   };
 
   async function handleAddress(req, res) {
-    if(address.trim() === ""){
+    if (address.trim() === "") {
       handleError("empty address cannot be updated!");
       return;
     }
@@ -39,6 +40,8 @@ function Profile() {
       const { message, success, error } = result;
       if (success) {
         handleSuccess(message);
+        setUser(prevUser => ({ ...prevUser, address }));
+        setShowInput(false);
       } else if (error) {
         const details = error.details[0].message;
         handleError(details);
@@ -70,6 +73,13 @@ function Profile() {
       .catch(err => console.error("Error fetching user: ", err));
   }, []);
 
+  useEffect(() => {
+    if (user && user.address) {
+      setIsaddress(true);
+    } else {
+      setIsaddress(false);
+    }
+  }, [user]);
 
   if (!user) {
     return <p>Loading...</p>
@@ -96,17 +106,24 @@ function Profile() {
             <p>{user.phone}</p>
           </div>
           <div className={styles.locationDetails}>
-            {!showInput ? (
-              <p>Add address <button onClick={() => setShowInput(true)}>Add</button></p>
-            ) : (
+            {isaddress ? (
               <>
-                <label>Add your full address: </label>
-                <input type='text' placeholder='Full address' name="address" onChange={handleAddressChange} />
-                <button onClick={handleAddress}>Confirm</button>
+                <h2>Full address: </h2>
+                <p>{user?.address}</p>
               </>
+            ) : (
+              !showInput ? (
+                <p>Add address <button onClick={() => setShowInput(true)}>Add</button></p>
+              ) : (
+                <>
+                  <label>Add your full address: </label>
+                  <input type='text' placeholder='Full address' name="address" onChange={handleAddressChange} />
+                  <button onClick={handleAddress}>Confirm</button>
+                </>
+              )
             )}
-            <h2>{user.area}, {user.city}</h2>
-            <h2>{user.pincode}</h2>
+            <h2>Locality: {user.area}</h2>
+            <h2>Pincode: {user.pincode}</h2>
           </div>
         </div>
         <div className={styles.listings}>
