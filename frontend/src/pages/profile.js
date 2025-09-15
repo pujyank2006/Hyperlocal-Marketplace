@@ -15,10 +15,12 @@ function Profile() {
   const [showInput, setShowInput] = useState(false);
   const [address, setAddress] = useState("");
   const [isaddress, setIsaddress] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
 
   const handleAddressChange = (e) => {
     setAddress(e.target.value);
   };
+
 
   async function handleAddress(req, res) {
     if (address.trim() === "") {
@@ -100,10 +102,25 @@ function Profile() {
       <div className={styles.information}>
         <div className={styles.detailsPage}>
           <div className={styles.personalDetails}>
-            <p>Image will be set <button>edit</button></p>
-            <h1>{user.name}</h1>
-            <p>{user.email}</p>
-            <p>{user.phone}</p>
+            <div className={styles.editButton}><button onClick={() => setIsEdit(true)}>edit</button></div>
+            {isEdit ? (
+              <form name="myform" id="form" method="PUT">
+                <div className = {styles.editDetails}>
+                  <h2>Edit your details</h2>
+                  <input type='text' placeholder={user.name} name='name' />
+                  <input type='text' placeholder={user.email} name='email' />
+                  <input type='text' placeholder={user.phone} name='phone' />
+                  <button type='submit'>Save Changes</button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <h1>{user.name}</h1>
+                <p>{user.email}</p>
+                <p>{user.phone}</p>
+              </>
+            )}
+
           </div>
           <div className={styles.locationDetails}>
             {isaddress ? (
@@ -129,7 +146,7 @@ function Profile() {
         <div className={styles.listings}>
           Currently empty
         </div>
-      </div>
+      </div >
       <ToastContainer />
     </>
   )
