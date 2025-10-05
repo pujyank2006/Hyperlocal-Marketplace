@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const protect = require('../middlewares/protectMiddleware');
-const { addAddress } = require('../controllers/userDetailsController');
+const { addAddress, updateDetails } = require('../controllers/userDetailsController');
 
 // Router to get all the details of the user.
 router.get('/loggedInUser', protect, (req, res) => {
@@ -13,6 +13,6 @@ router.get('/loggedInUser', protect, (req, res) => {
 router.put('/addAddress', addAddress);
 
 // Router to edit the details of the user.
-// router.put('/users/:id', )
+router.patch('/users', updateDetails)
 
 module.exports = router;
