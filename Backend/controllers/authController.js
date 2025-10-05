@@ -27,7 +27,7 @@ async function handleSignup(req, res) {
     }
 };
 
-// logical method to handle login
+// Logical method to handle login
 async function handleLogin (req, res) {
     try {
         const { email, password } = req.body;

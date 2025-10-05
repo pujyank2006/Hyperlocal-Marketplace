@@ -31,6 +31,7 @@ connectMongodb("mongodb://localhost:27017/Hyperlocal-Marketplace")
     
     // Starting a server
     app.listen(PORT, () => {
+        console.log(process.env.PORT);
         console.log(`Server is running, at ${PORT}`);
     });
 })

@@ -29,7 +29,7 @@ function Profile() {
     }
     const token = localStorage.getItem('token');
     try {
-      const url = "http://localhost:9000/api/addDetails";
+      const url = "http://localhost:9000/api/addAddress";
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
@@ -105,7 +105,7 @@ function Profile() {
             <div className={styles.editButton}><button onClick={() => setIsEdit(true)}>edit</button></div>
             {isEdit ? (
               <form name="myform" id="form" method="PUT">
-                <div className = {styles.editDetails}>
+                <div className={styles.editDetails}>
                   <h2>Edit your details</h2>
                   <input type='text' placeholder={user.name} name='name' />
                   <input type='text' placeholder={user.email} name='email' />
