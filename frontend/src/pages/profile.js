@@ -6,7 +6,7 @@ import logo from "./assets/favicon.png";
 import title2 from "./assets/Title2.png";
 import account from "./assets/accountCircle.svg";
 import styles from "../styles/profile.module.css";
-import AccountDetails from './Components/accountDetails';
+import AccountDetails from '../Components/accountDetails';
 import { handleError, handleSuccess } from '../utils';
 
 function Profile() {

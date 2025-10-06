@@ -6,7 +6,7 @@ import { handleError, handleSuccess } from '../utils';
 // Importing Style
 import styles from "../styles/authPages.module.css";
 // Layout 
-import LoginLayout from "./Components/loginLayout";
+import LoginLayout from "../Components/loginLayout";
 
 function Login() {
   const [loginInfo, setLoginInfo] = useState({

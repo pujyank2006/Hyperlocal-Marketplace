@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
-import logo from "../assets/favicon.png";
-import title from "../assets/Title.png";
+import logo from "../pages/assets/favicon.png";
+import title from "../pages/assets/Title.png";
 
 
 import Footer from './footer';

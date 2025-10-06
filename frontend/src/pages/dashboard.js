@@ -5,7 +5,7 @@ import logo from "./assets/favicon.png";
 import title2 from "./assets/Title2.png";
 import account from "./assets/accountCircle.svg";
 import styles from "../styles/dashboard.module.css";
-import AccountDetails from './Components/accountDetails';
+import AccountDetails from '../Components/accountDetails';
 
 
 function Dashboard() {

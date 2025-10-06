@@ -4,7 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import { handleError, handleSuccess } from '../utils';
 
 import styles from "../styles/authPages.module.css";
-import SignupLayout from "./Components/signupLayout";
+import SignupLayout from "../Components/signupLayout";
 
 function SignupPage() {
   const navigate = useNavigate();

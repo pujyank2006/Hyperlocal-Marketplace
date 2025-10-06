@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
-import Footer from './Components/footer';
+import Footer from '../Components/footer';
 import styles from '../styles/homePage.module.css';
 import favicon from './assets/favicon.png';
 
