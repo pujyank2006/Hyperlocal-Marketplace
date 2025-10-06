@@ -40,14 +40,11 @@ function Login() {
         body: JSON.stringify(loginInfo)
       })
       const result = await response.json();
-      const { message, success, jwtToken, name, email, city, area, error } = result;
+      const { message, success, jwtToken, error } = result;
       if (success) {
         handleSuccess(message);
         localStorage.setItem('token', jwtToken);
-        localStorage.setItem('loggedInUser', name);
-        localStorage.setItem('email', email);
-        localStorage.setItem('city', city);
-        localStorage.setItem('area', area);
+        localStorage.setItem('isLoggedIn', true);
         setTimeout(() => {
           navigate('/dashboard');
         }, 2000);

@@ -49,7 +49,7 @@ async function handleLogin (req, res) {
             { expiresIn: '24h' }
         );
 
-        res.status(201).json({ message: "Login Successfull", success: true, jwtToken, name: user.name, email: user.email, city: user.city, area: user.area });
+        res.status(201).json({ message: "Login Successfull", success: true, jwtToken });
     } catch (error) {
         res.status(500).json({ message: "Internal Server Error", success: false });
     }
