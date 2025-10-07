@@ -9,9 +9,6 @@ router.get('/loggedInUser', protect, (req, res) => {
     res.json(req.user);
 });
 
-// Router to add the full address.
-router.put('/addAddress', addAddress);
-
 // Router to edit the details of the user.
 router.patch('/users', updateDetails)
 

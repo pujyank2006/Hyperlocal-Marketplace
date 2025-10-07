@@ -6,150 +6,260 @@ import logo from "./assets/favicon.png";
 import title2 from "./assets/Title2.png";
 import account from "./assets/accountCircle.svg";
 import styles from "../styles/profile.module.css";
-import AccountDetails from '../Components/accountDetails';
+
+import AccountOptions from '../Components/accountOptions';
 import { handleError, handleSuccess } from '../utils';
 
 function Profile() {
   const [isAccountOpen, setAccountOpen] = useState(false);
   const [user, setUser] = useState(null);
-  const [showInput, setShowInput] = useState(false);
-  const [address, setAddress] = useState("");
-  const [isaddress, setIsaddress] = useState(false);
-  const [isEdit, setIsEdit] = useState(false);
 
-  const handleAddressChange = (e) => {
-    setAddress(e.target.value);
-  };
+  const [personalDetails, setPersonalDetails] = useState({
+    name: "",
+    email: "",
+    phone: "",
+  });
 
+  const [addressDetails, setAddressDetails] = useState({
+    area: "",
+    pincode: "",
+    address: "",
+  });
 
-  async function handleAddress(req, res) {
-    if (address.trim() === "") {
-      handleError("empty address cannot be updated!");
-      return;
+  const [isEditingPersonal, setIsEditingPersonal] = useState(false);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+
+  // ✅ Unified input change handler
+  function handleChange(e, type) {
+    const { name, value } = e.target;
+    if (type === "personal") {
+      setPersonalDetails(prev => ({ ...prev, [name]: value }));
+    } else {
+      setAddressDetails(prev => ({ ...prev, [name]: value }));
     }
-    const token = localStorage.getItem('token');
+  }
+
+  // ✅ Validation helpers
+  function validateInputs(obj) {
+    return Object.values(obj).every(field => field.trim() !== "");
+  }
+
+  // ✅ Reusable update function
+  async function updateUser(data) {
+    const token = localStorage.getItem("token");
+    if (!token) return handleError("No token found");
+
     try {
-      const url = "http://localhost:9000/api/addAddress";
-      const response = await fetch(url, {
-        method: 'PUT',
+      const response = await fetch("http://localhost:9000/api/users", {
+        method: "PATCH",
         headers: {
-          "Content-type": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({ address })
-      })
+        body: JSON.stringify(data),
+      });
+
       const result = await response.json();
-      const { message, success, error } = result;
+      const { success } = result;
+
       if (success) {
-        handleSuccess(message);
-        setUser(prevUser => ({ ...prevUser, address }));
-        setShowInput(false);
-      } else if (error) {
-        const details = error.details[0].message;
-        handleError(details);
-      } else if (!success) {
-        handleError(message);
+        setUser(prev => ({ ...prev, ...data }));
+        return true;
+      } else {
+        return false;
       }
-    } catch (error) {
-      console.log(error);
+    } catch (err) {
+      console.error(err);
+      handleError("Network error");
     }
-  };
+  }
 
+  // ✅ Handle submits
+  function handlePersonalSubmit(e) {
+    e.preventDefault();
+    if (!validateInputs(personalDetails)) {
+      return handleError("Please fill all personal details");
+    }
+    const success = updateUser(personalDetails);
+    if (success) {
+      handleSuccess("Details updated successfully");
+      setIsEditingPersonal(false);
+    } else {
+      handleError("Server error!!");
+    }
+  }
+
+  function handleAddressSubmit(e) {
+    e.preventDefault();
+    if (!validateInputs(addressDetails)) {
+      return handleError("Please fill all address details");
+    }
+    const success = updateUser(addressDetails);
+    if (success) {
+      handleSuccess("Details updated successfully");
+      setIsEditingAddress(false);
+    } else {
+      handleError("Server Error");
+    }
+  }
+
+  // ✅ Fetch user on mount
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-    if (!token) {
-      return;
-    }
-
-    const url = "http://localhost:9000/api/loggedInUser";
-    fetch(url, {
-      method: 'GET',
+    fetch("http://localhost:9000/api/loggedInUser", {
+      method: "GET",
       headers: {
-        "Content-type": "application/json",
+        "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`,
       },
     })
-      .then((res) => res.json())
-      .then((data) => setUser(data))
-      .catch(err => console.error("Error fetching user: ", err));
+      .then(res => res.json())
+      .then(data => {
+        setUser(data);
+        setPersonalDetails({
+          name: data?.name || "",
+          email: data?.email || "",
+          phone: data?.phone || "",
+        });
+        setAddressDetails({
+          area: data?.area || "",
+          pincode: data?.pincode || "",
+          address: data?.address || "",
+        });
+      })
+      .catch(err => console.error("Error fetching user:", err));
   }, []);
 
-  useEffect(() => {
-    if (user && user.address) {
-      setIsaddress(true);
-    } else {
-      setIsaddress(false);
-    }
-  }, [user]);
-
-  if (!user) {
-    return <p>Loading...</p>
-  }
+  if (!user) return <p>Loading...</p>;
 
   return (
     <>
+      {/* HEADER */}
       <div className={styles.mainHeader}>
         <Link to="/">
-          <img alt='pic' src={logo} width='40px' height='40px' />
+          <img alt="logo" src={logo} width="40" height="40" />
           &nbsp;
-          <img alt='pic' src={title2} className={styles.title} />
+          <img alt="title" src={title2} className={styles.title} />
         </Link>
-        <button className={styles.button} onClick={() => setAccountOpen(!isAccountOpen)}><img alt='pic' src={account} width='40px' height='40px' /></button>
-        <AccountDetails open={isAccountOpen} onClose={() => setAccountOpen(false)}></AccountDetails>
+        <button
+          className={styles.button}
+          onClick={() => setAccountOpen(!isAccountOpen)}
+        >
+          <img alt="account" src={account} width="40" height="40" />
+        </button>
+        <AccountOptions open={isAccountOpen} onClose={() => setAccountOpen(false)} />
       </div>
 
+      {/* BODY */}
       <div className={styles.information}>
         <div className={styles.detailsPage}>
+
+          {/* PERSONAL DETAILS */}
           <div className={styles.personalDetails}>
-            <div className={styles.editButton}><button onClick={() => setIsEdit(true)}>edit</button></div>
-            {isEdit ? (
-              <form name="myform" id="form" method="PUT">
+            {isEditingPersonal ? (
+              <form onSubmit={handlePersonalSubmit}>
                 <div className={styles.editDetails}>
                   <h2>Edit your details</h2>
-                  <input type='text' placeholder={user.name} name='name' />
-                  <input type='text' placeholder={user.email} name='email' />
-                  <input type='text' placeholder={user.phone} name='phone' />
-                  <button type='submit'>Save Changes</button>
+
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="Name"
+                    value={personalDetails.name}
+                    onChange={(e) => handleChange(e, "personal")}
+                  />
+                  <input
+                    type="text"
+                    name="email"
+                    placeholder="Email"
+                    value={personalDetails.email}
+                    onChange={(e) => handleChange(e, "personal")}
+                  />
+                  <input
+                    type="text"
+                    name="phone"
+                    placeholder="Phone"
+                    value={personalDetails.phone}
+                    onChange={(e) => handleChange(e, "personal")}
+                  />
+
+                  <button type="submit">Save</button>
+                  <button type="button" onClick={() => setIsEditingPersonal(false)}>Cancel</button>
                 </div>
               </form>
             ) : (
               <>
+                <div className={styles.editButton}>
+                  <button onClick={() => setIsEditingPersonal(true)}>Edit</button>
+                </div>
                 <h1>{user.name}</h1>
                 <p>{user.email}</p>
                 <p>{user.phone}</p>
               </>
             )}
+          </div>
 
-          </div>
+          {/* ADDRESS DETAILS */}
           <div className={styles.locationDetails}>
-            {isaddress ? (
-              <>
-                <h2>Full address: </h2>
-                <p>{user?.address}</p>
-              </>
+            {isEditingAddress ? (
+              <form onSubmit={handleAddressSubmit}>
+                <div className={styles.editDetails}>
+                  <h2>{user.address ? "Edit Address" : "Add Address"}</h2>
+
+                  <input
+                    type="text"
+                    name="area"
+                    placeholder="Area"
+                    value={addressDetails.area}
+                    onChange={(e) => handleChange(e, "address")}
+                  />
+                  <input
+                    type="text"
+                    name="pincode"
+                    placeholder="Pincode"
+                    value={addressDetails.pincode}
+                    onChange={(e) => handleChange(e, "address")}
+                  />
+                  <input
+                    type="text"
+                    name="address"
+                    placeholder="Full Address"
+                    value={addressDetails.address}
+                    onChange={(e) => handleChange(e, "address")}
+                  />
+
+                  <button type="submit">Save</button>
+                  <button type="button" onClick={() => setIsEditingAddress(false)}>Cancel</button>
+                </div>
+              </form>
             ) : (
-              !showInput ? (
-                <p>Add address <button onClick={() => setShowInput(true)}>Add</button></p>
-              ) : (
-                <>
-                  <label>Add your full address: </label>
-                  <input type='text' placeholder='Full address' name="address" onChange={handleAddressChange} />
-                  <button onClick={handleAddress}>Confirm</button>
-                </>
-              )
+              <>
+                {user.address ? (
+                  <>
+                    <h1>{user.area}</h1>
+                    <h2>{user.pincode}</h2>
+                    <p>{user.address}</p>
+                    <button className={styles.editButton} onClick={() => setIsEditingAddress(true)}>Edit</button>
+                  </>
+                ) : (
+                  <>
+                    <p>No address found.</p>
+                    <button onClick={() => setIsEditingAddress(true)}>Add Address</button>
+                  </>
+                )}
+              </>
             )}
-            <h2>Locality: {user.area}</h2>
-            <h2>Pincode: {user.pincode}</h2>
           </div>
         </div>
-        <div className={styles.listings}>
-          Currently empty
-        </div>
-      </div >
+
+        <div className={styles.listings}>Currently empty</div>
+      </div>
+
       <ToastContainer />
     </>
-  )
+  );
 }
 
-export default Profile
+export default Profile;
