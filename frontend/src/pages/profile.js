@@ -43,16 +43,16 @@ function Profile() {
   }
 
   async function updateUser(data) {
-    const token = localStorage.getItem("token");
-    if (!token) return handleError("No token found");
+    const isLoggedIn = localStorage.getItem("isLoggedIn");
+    if (!isLoggedIn) return handleError("No token found");
 
     try {
       const response = await fetch("http://localhost:9000/api/users", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify(data),
       });
 
@@ -100,31 +100,35 @@ function Profile() {
   }
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+    const isLoggedIn = localStorage.getItem("isLoggedIn");
+    if (!isLoggedIn) return;
 
-    fetch("http://localhost:9000/api/loggedInUser", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-    })
-      .then(res => res.json())
-      .then(data => {
-        setUser(data);
-        setPersonalDetails({
-          name: data?.name || "",
-          email: data?.email || "",
-          phone: data?.phone || "",
-        });
-        setAddressDetails({
-          area: data?.area || "",
-          pincode: data?.pincode || "",
-          address: data?.address || "",
-        });
+    try {
+      fetch("http://localhost:9000/api/loggedInUser", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
       })
-      .catch(err => console.error("Error fetching user:", err));
+        .then(res => res.json())
+        .then(data => {
+          setUser(data);
+          setPersonalDetails({
+            name: data?.name || "",
+            email: data?.email || "",
+            phone: data?.phone || "",
+          });
+          setAddressDetails({
+            area: data?.area || "",
+            pincode: data?.pincode || "",
+            address: data?.address || "",
+          });
+        })
+        .catch(err => console.error("Error fetching user:", err));
+    } catch (error) {
+      console.log(error);
+    }
   }, []);
 
   if (!user) return <p>Loading...</p>;

@@ -53,6 +53,7 @@ function SignupPage() {
         headers: {
           'Content-type': 'application/json'
         },
+        credentials: "include",
         body: JSON.stringify(signupInfo)
       });
       const result = await response.json();

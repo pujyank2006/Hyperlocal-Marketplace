@@ -20,26 +20,25 @@ async function handleSignup(req, res) {
         const presentUser = new userDetails({ name, email, phone, state, city, area, pincode, password });
         presentUser.password = await bcrypt.hash(password, 10);
         await presentUser.save();
-
         res.status(201).json({ message: 'Signup success', success: true })
-    } catch {
+    } catch (error){
         res.status(500).json({ message: "Internal server error ", success: false })
     }
 };
 
 // Logical method to handle login
-async function handleLogin (req, res) {
+async function handleLogin(req, res) {
     try {
         const { email, password } = req.body;
         const user = await userDetails.findOne({ email });
-        
-        if(!user){
+
+        if (!user) {
             return res.status(403).json({ message: "User doesn't exits, create an account", success: false });
         }
 
         const isPasswordEqual = await bcrypt.compare(password, user.password);
 
-        if(!isPasswordEqual) {
+        if (!isPasswordEqual) {
             return res.status(403).json({ message: "Incorrect password!", success: false });
         }
 
@@ -49,14 +48,28 @@ async function handleLogin (req, res) {
             { expiresIn: '24h' }
         );
 
-        res.status(201).json({ message: "Login Successfull", success: true, jwtToken });
+        res.cookie("token", jwtToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24000,
+        });
+
+        res.status(201).json({ message: "Login Successfull", success: true });
     } catch (error) {
         res.status(500).json({ message: "Internal Server Error", success: false });
     }
+};
+
+// Logical function to logout the user
+async function handleLogout(req, res) {
+    res.clearCookie("token");
+    res.json({ message: "Logged out!!!" });
 };
 
 // export the required functions
 module.exports = {
     handleSignup,
     handleLogin,
+    handleLogout
 }

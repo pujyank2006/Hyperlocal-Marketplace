@@ -6,6 +6,7 @@ const express = require('express');
 const connectMongodb = require("./connectDb");
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 
 // Acquring the requied files
 const authRoutes = require('./routes/authRouter');
@@ -13,8 +14,15 @@ const userDetailsRoutes = require('./routes/userDetailsRouter');
 
 const app = express();
 app.use(bodyParser.json());
-app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
+
+app.use(cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+}));
+
+
 const PORT = process.env.PORT || 8080;
 
 //Authentication Route

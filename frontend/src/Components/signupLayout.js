@@ -5,7 +5,6 @@ import title from "../pages/assets/Title.png";
 
 import Footer from './footer';
 import styles from '../ComponentStyles/authLayout.module.css';
-import { handleSuccess } from '../utils';
 
 function SignupLayout({ children }) {
     const navigate = useNavigate();

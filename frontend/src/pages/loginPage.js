@@ -37,14 +37,14 @@ function Login() {
         headers: {
           'Content-type': 'application/json'
         },
+        credentials: "include",
         body: JSON.stringify(loginInfo)
       })
       const result = await response.json();
-      const { message, success, jwtToken, error } = result;
+      const { message, success, error } = result;
       if (success) {
+        localStorage.setItem("isLoggedIn", true);
         handleSuccess(message);
-        localStorage.setItem('token', jwtToken);
-        localStorage.setItem('isLoggedIn', true);
         setTimeout(() => {
           navigate('/dashboard');
         }, 2000);
@@ -54,9 +54,7 @@ function Login() {
       } else if (!success) {
         handleError(message);
       }
-      console.log(result);
-    }
-    catch (err) {
+    } catch (err) {
       handleError(err);
     }
   }
