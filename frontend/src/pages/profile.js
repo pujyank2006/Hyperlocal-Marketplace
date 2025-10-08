@@ -29,7 +29,6 @@ function Profile() {
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
 
-  // ✅ Unified input change handler
   function handleChange(e, type) {
     const { name, value } = e.target;
     if (type === "personal") {
@@ -39,12 +38,10 @@ function Profile() {
     }
   }
 
-  // ✅ Validation helpers
   function validateInputs(obj) {
     return Object.values(obj).every(field => field.trim() !== "");
   }
 
-  // ✅ Reusable update function
   async function updateUser(data) {
     const token = localStorage.getItem("token");
     if (!token) return handleError("No token found");
@@ -74,7 +71,6 @@ function Profile() {
     }
   }
 
-  // ✅ Handle submits
   function handlePersonalSubmit(e) {
     e.preventDefault();
     if (!validateInputs(personalDetails)) {
@@ -103,7 +99,6 @@ function Profile() {
     }
   }
 
-  // ✅ Fetch user on mount
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -144,7 +139,7 @@ function Profile() {
           <img alt="title" src={title2} className={styles.title} />
         </Link>
         <button
-          className={styles.button}
+          className={styles.Accountbutton}
           onClick={() => setAccountOpen(!isAccountOpen)}
         >
           <img alt="account" src={account} width="40" height="40" />
@@ -164,6 +159,7 @@ function Profile() {
                   <h2>Edit your details</h2>
 
                   <input
+                    className={styles.inputSpaces}
                     type="text"
                     name="name"
                     placeholder="Name"
@@ -171,6 +167,7 @@ function Profile() {
                     onChange={(e) => handleChange(e, "personal")}
                   />
                   <input
+                    className={styles.inputSpaces}
                     type="text"
                     name="email"
                     placeholder="Email"
@@ -178,6 +175,7 @@ function Profile() {
                     onChange={(e) => handleChange(e, "personal")}
                   />
                   <input
+                    className={styles.inputSpaces}
                     type="text"
                     name="phone"
                     placeholder="Phone"
@@ -185,14 +183,16 @@ function Profile() {
                     onChange={(e) => handleChange(e, "personal")}
                   />
 
-                  <button type="submit">Save</button>
-                  <button type="button" onClick={() => setIsEditingPersonal(false)}>Cancel</button>
+                  <div className={styles.buttonBox} >
+                    <button type="submit" className={styles.otherButton} >Save</button>
+                    <button type="button" className={styles.otherButton} onClick={() => setIsEditingPersonal(false)}>Cancel</button>
+                  </div>
                 </div>
               </form>
             ) : (
               <>
-                <div className={styles.editButton}>
-                  <button onClick={() => setIsEditingPersonal(true)}>Edit</button>
+                <div>
+                  <button className={styles.editButton} onClick={() => setIsEditingPersonal(true)}>Edit</button>
                 </div>
                 <h1>{user.name}</h1>
                 <p>{user.email}</p>
@@ -209,6 +209,7 @@ function Profile() {
                   <h2>{user.address ? "Edit Address" : "Add Address"}</h2>
 
                   <input
+                    className={styles.inputSpaces}
                     type="text"
                     name="area"
                     placeholder="Area"
@@ -216,6 +217,7 @@ function Profile() {
                     onChange={(e) => handleChange(e, "address")}
                   />
                   <input
+                    className={styles.inputSpaces}
                     type="text"
                     name="pincode"
                     placeholder="Pincode"
@@ -223,6 +225,7 @@ function Profile() {
                     onChange={(e) => handleChange(e, "address")}
                   />
                   <input
+                    className={styles.inputSpaces}
                     type="text"
                     name="address"
                     placeholder="Full Address"
@@ -230,8 +233,10 @@ function Profile() {
                     onChange={(e) => handleChange(e, "address")}
                   />
 
-                  <button type="submit">Save</button>
-                  <button type="button" onClick={() => setIsEditingAddress(false)}>Cancel</button>
+                  <div className={styles.buttonBox}>
+                    <button type="submit" className={styles.otherButton} >Save</button>
+                    <button type="button" className={styles.otherButton} onClick={() => setIsEditingAddress(false)}>Cancel</button>
+                  </div>
                 </div>
               </form>
             ) : (

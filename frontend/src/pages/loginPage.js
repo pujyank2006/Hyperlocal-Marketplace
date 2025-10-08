@@ -70,14 +70,14 @@ function Login() {
           <li>
             <div className={styles.eachList}>
             <label>Email: </label>
-              <input type="text" placeholder="email" name="email" autoFocus onChange={handleChange} />
+              <input className = {styles.inputSpaces} type="text" placeholder="email" name="email" autoFocus onChange={handleChange} />
             </div>
           </li>
 
           <li>
             <div className={styles.eachList}>
             <label>Password: </label>
-              <input type="password" placeholder="Password" name="password" onChange={handleChange} />
+              <input className = {styles.inputSpaces} type="password" placeholder="Password" name="password" onChange={handleChange} />
             </div>
           </li>
         </ul>

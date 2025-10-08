@@ -108,21 +108,21 @@ function SignupPage() {
               <li>
                 <div className={styles.eachList}>
                   <label>Name: </label>
-                  <input type="text" placeholder="name" name="name" autoFocus onChange={handleChange} value={signupInfo.name}/>
+                  <input className = {styles.inputSpaces} type="text" placeholder="name" name="name" autoFocus onChange={handleChange} value={signupInfo.name}/>
                 </div>
               </li>
 
               <li>
                 <div className={styles.eachList}>
                   <label>Email: </label>
-                  <input type="text" placeholder="email" name="email" onChange={handleChange} value={signupInfo.email}/>
+                  <input className = {styles.inputSpaces} type="text" placeholder="email" name="email" onChange={handleChange} value={signupInfo.email}/>
                 </div>
               </li>
 
               <li>
                 <div className={styles.eachList}>
                   <label>Phone: </label>
-                  <input type="text" placeholder="phone" name="phone" onChange={handleChange} value = {signupInfo.phone}/>
+                  <input className = {styles.inputSpaces} type="text" placeholder="phone" name="phone" onChange={handleChange} value = {signupInfo.phone}/>
                 </div>
               </li>
             </ul>
@@ -136,28 +136,28 @@ function SignupPage() {
               <li>
                 <div className={styles.eachList}>
                   <label>State: </label>
-                  <input type="text" placeholder="state" name="state" autoFocus onChange={handleChange} value={signupInfo.state}/>
+                  <input className = {styles.inputSpaces} type="text" placeholder="state" name="state" autoFocus onChange={handleChange} value={signupInfo.state}/>
                 </div>
               </li>
 
               <li>
                 <div className={styles.eachList}>
                   <label>City: </label>
-                  <input type="text" placeholder="city" name="city" onChange={handleChange} value={signupInfo.city}/>
+                  <input className = {styles.inputSpaces} type="text" placeholder="city" name="city" onChange={handleChange} value={signupInfo.city}/>
                 </div>
               </li>
 
               <li>
                 <div className={styles.eachList}>
                   <label>Area: </label>
-                  <input type="text" placeholder="area" name="area" onChange={handleChange} value={signupInfo.area}/>
+                  <input className = {styles.inputSpaces} type="text" placeholder="area" name="area" onChange={handleChange} value={signupInfo.area}/>
                 </div>
               </li>
 
               <li>
                 <div className={styles.eachList}>
                   <label>Pincode: </label>
-                  <input type="text" placeholder="pincode" name="pincode" onChange={handleChange} value={signupInfo.pincode}/>
+                  <input className = {styles.inputSpaces} type="text" placeholder="pincode" name="pincode" onChange={handleChange} value={signupInfo.pincode}/>
                 </div>
               </li>
             </ul>
@@ -172,14 +172,14 @@ function SignupPage() {
               <li>
                 <div className={styles.eachList}>
                   <label>Password: </label>
-                  <input type="password" placeholder="password" name="password" autoFocus onChange={handleChange} value={signupInfo.password}/>
+                  <input className = {styles.inputSpaces} type="password" placeholder="password" name="password" autoFocus onChange={handleChange} value={signupInfo.password}/>
                 </div>
               </li>
 
               <li>
                 <div className={styles.eachList}>
                   <label>Confirm Password: </label>
-                  <input type="password" placeholder="confirm password" name="confirmPassword" onChange={handleChange} value={signupInfo.confirmPassword}/>
+                  <input className = {styles.inputSpaces} type="password" placeholder="confirm password" name="confirmPassword" onChange={handleChange} value={signupInfo.confirmPassword}/>
                 </div>
               </li>
             </ul>

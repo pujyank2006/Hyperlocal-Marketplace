@@ -23,7 +23,7 @@
     width: auto;
 }
 
-.button {
+.Accountbutton {
     background-color: black;
     padding: 10px 12px;
     border-style: none;
@@ -81,8 +81,44 @@
     /* take full vertical space */
 }
 
+.buttonBox {
+    display: flex;
+    justify-content: left;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.otherButton {
+    background-color: black;
+    color: white;
+    border: none;
+    margin: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
 .editButton {
+    background-color: black;
+    color: white;
+    border: none;
+    margin: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
     position: absolute;
     top: 10px;
     right: 10px;
+}
+
+.inputSpaces {
+  width: 300px;
+  height: 30px;
+  border: 2px solid black;
+  border-radius: 10px;
+  margin: 5px;
 }
