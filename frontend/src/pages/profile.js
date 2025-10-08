@@ -261,7 +261,6 @@ function Profile() {
 
         <div className={styles.listings}>Currently empty</div>
       </div>
-
       <ToastContainer />
     </>
   );

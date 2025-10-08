@@ -25,9 +25,8 @@ function App() {
 
         {/* Protected routes */}
         <Route element={ <ProtectedRoute /> }>
-          <Route path='/' element={ <Navigate to='dashboard' /> } />
-          <Route path='/login' element={ <Navigate to="/" />} />
-          <Route path='/signup' element={ <Navigate to="/" /> } />
+          <Route path='/login' element={ <Navigate to="/dashboard" />} />
+          <Route path='/signup' element={ <Navigate to="/dashboard" /> } />
           <Route path="/dashboard" element={ <Dashboard /> } />
           <Route path="/profile" element={ <Profile /> } />
         </Route>

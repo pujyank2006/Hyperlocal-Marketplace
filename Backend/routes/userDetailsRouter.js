@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const protect = require('../middlewares/protectMiddleware');
-const { addAddress, updateDetails } = require('../controllers/userDetailsController');
+const { updateDetails } = require('../controllers/userDetailsController');
 
 // Router to get all the details of the user.
 router.get('/loggedInUser', protect, (req, res) => {

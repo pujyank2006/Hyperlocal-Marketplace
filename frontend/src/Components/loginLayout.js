@@ -1,8 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
+
 import logo from "../pages/assets/favicon.png";
 import title from "../pages/assets/Title.png";
-
-
 import Footer from './footer';
 import styles from '../ComponentStyles/authLayout.module.css';
 
