@@ -6,6 +6,7 @@ import Home from './pages/homePage';
 import Signup from './pages/signupPage';
 import Dashboard from './pages/dashboard';
 import Profile from './pages/profile';
+import Images from './pages/images';
 import ProtectedRoute from './Components/protectedRoute.js';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
           <Route path="/dashboard" element={ <Dashboard /> } />
           <Route path="/profile" element={ <Profile /> } />
         </Route>
+        <Route path='/images' element = { <Images /> } />
       </Routes>
     </div>
   )

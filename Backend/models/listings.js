@@ -1,7 +1,11 @@
 const mongoose = require('mongoose');
 const schema = mongoose.Schema;
 
-const listingsSchema = new schema ({ 
+const listingsSchema = new schema ({
+    relatedUser: {
+        type: String,
+        required: true
+    },
     title: {
         type: String,
         required: true
