@@ -5,10 +5,10 @@ async function addNewListings (req, res) {
     try {
         const token = req.cookies.token;
         if(!token) {
-            res.status(400).json({ error: "Token not provided!" });
+            res.status(400).json({ success: false, error: "Token not provided!" });
         }
         const decoded_id = jwt.verify(token, process.env.JWT_SECRET);
-        const user_id = decoded_id;
+        const user_id = decoded_id.id;
 
         const { title, description, category, price, owner } = req.body;
 
@@ -27,12 +27,13 @@ async function addNewListings (req, res) {
         await newListing.save();
 
         res.status(200).json({
-            success: "true",
+            success: true,
             message: "Listing created successfully"
         });
 
     } catch (error) {
-        res.status(500).json({ message: "Internal server error!!" });
+        console.error("Error creating listing:", error);
+        res.status(500).json({ success: false, message: "Internal server error!!" });
     }
 }
 

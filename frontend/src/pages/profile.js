@@ -71,12 +71,12 @@ function Profile() {
     }
   }
 
-  function handlePersonalSubmit(e) {
+  async function handlePersonalSubmit(e) {
     e.preventDefault();
     if (!validateInputs(personalDetails)) {
       return handleError("Please fill all personal details");
     }
-    const success = updateUser(personalDetails);
+    const success = await updateUser(personalDetails);
     if (success) {
       handleSuccess("Details updated successfully");
       setIsEditingPersonal(false);
@@ -85,12 +85,12 @@ function Profile() {
     }
   }
 
-  function handleAddressSubmit(e) {
+  async function handleAddressSubmit(e) {
     e.preventDefault();
     if (!validateInputs(addressDetails)) {
       return handleError("Please fill all address details");
     }
-    const success = updateUser(addressDetails);
+    const success = await updateUser(addressDetails);
     if (success) {
       handleSuccess("Details updated successfully");
       setIsEditingAddress(false);
@@ -113,16 +113,16 @@ function Profile() {
       })
         .then(res => res.json())
         .then(data => {
-          setUser(data);
+          setUser(data.user);
           setPersonalDetails({
-            name: data?.name || "",
-            email: data?.email || "",
-            phone: data?.phone || "",
+            name: data.user?.name || "",
+            email: data.user?.email || "",
+            phone: data.user?.phone || "",
           });
           setAddressDetails({
-            area: data?.area || "",
-            pincode: data?.pincode || "",
-            address: data?.address || "",
+            area: data.user?.area || "",
+            pincode: data.user?.pincode || "",
+            address: data.user?.address || "",
           });
         })
         .catch(err => console.error("Error fetching user:", err));

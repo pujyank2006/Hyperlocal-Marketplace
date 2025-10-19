@@ -41,7 +41,7 @@ const storage = multer.diskStorage({
     destination: function (req, file, cb) {
 
         const subFolder = req.body.owner || 'default';
-        const folderPath = path.join('uploads', subFolder);
+        const folderPath = path.join(__dirname, 'uploads', subFolder);
 
         if (!fs.existsSync(folderPath)) {
             fs.mkdirSync(folderPath, { recursive: true });
@@ -51,7 +51,7 @@ const storage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-        cb(null, file.filename + '-' + uniqueSuffix);
+        cb(null, uniqueSuffix + '-' + file.originalname);
     }
 });
 

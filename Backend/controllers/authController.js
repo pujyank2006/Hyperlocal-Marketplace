@@ -9,20 +9,20 @@ async function handleSignup(req, res) {
         const { name, email, phone, state, city, area, pincode, password, confirmPassword } = req.body;
 
         if (password !== confirmPassword) {
-            return res.status(400).json({ error: "Password doesn't match!" });
+            return res.status(400).json({ success: false, error: "Password doesn't match!" });
         }
 
         const user = await userDetails.findOne({ email });
         if (user) {
-            return res.status(409).json({ message: "User already exists!", success: false });
+            return res.status(409).json({ success: false, message: "User already exists!" });
         };
 
         const presentUser = new userDetails({ name, email, phone, state, city, area, pincode, password });
         presentUser.password = await bcrypt.hash(password, 10);
         await presentUser.save();
-        res.status(201).json({ message: 'Signup success', success: true })
+        res.status(201).json({ success: true, message: 'Signup success' })
     } catch (error){
-        res.status(500).json({ message: "Internal server error ", success: false })
+        res.status(500).json({ success: false, message: "Internal server error " })
     }
 };
 
