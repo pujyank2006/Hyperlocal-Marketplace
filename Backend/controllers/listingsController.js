@@ -35,8 +35,30 @@ async function addNewListings (req, res) {
         console.error("Error creating listing:", error);
         res.status(500).json({ success: false, message: "Internal server error!!" });
     }
+};
+
+async function getListings (req, res) {
+    try {
+        const token = req.cookies.token;
+        if(!token){
+            return res.status(400).json({ success: false, error: "Un-authorized user" });
+        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userID = decoded.id;
+
+        const listing = await Listings.find({ "relatedUser": userID });
+
+        if(!listing){
+            return res.status(400).json({ success: false, error: "Listings details doesn't exist" });
+        }
+        
+        return res.status(200).json({ success: true, message: "Listings details retrieved!", listing });
+    } catch (error) {
+        return res.status(500).json({ success: false, error: "Internal server error" });
+    }
 }
 
 module.exports = {
-    addNewListings
+    addNewListings,
+    getListings
 }

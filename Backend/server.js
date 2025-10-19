@@ -57,7 +57,11 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// to create a listing
 app.use('/api2', upload.array('images', 10), listingsRoutes);
+
+// to get a listing
+app.use('/api3', listingsRoutes);
 
 // Connecting MongoDB
 connectMongodb("mongodb://localhost:27017/Hyperlocal-Marketplace")
