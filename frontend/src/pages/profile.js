@@ -8,6 +8,7 @@ import account from "./assets/accountCircle.svg";
 import styles from "../styles/profile.module.css";
 
 import AccountOptions from '../Components/accountOptions';
+import CreateListing from '../Components/createListing';
 import { handleError, handleSuccess } from '../utils';
 
 function Profile() {
@@ -263,7 +264,9 @@ function Profile() {
           </div>
         </div>
 
-        <div className={styles.listings}>Currently empty</div>
+        <div className={styles.listings} style={{ border: "1px solid red" }}>
+          <CreateListing />
+        </div>
       </div>
       <ToastContainer />
     </>
