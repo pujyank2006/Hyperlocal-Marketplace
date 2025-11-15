@@ -20,7 +20,7 @@ html, body {
     flex-direction: column;
 
     /* Fullscreen responsive background */
-    background-image: url("D:\FSD\Hyperlocal Marketplace\frontend\src\pages\assets\logo9.svg");
+    background-image: url("D:\FSD\Hyperlocal-Marketplace\frontend\src\pages\assets\logo9.svg");
     background-size: cover;      /* fills entire screen */
     background-position: center;
     background-attachment: fixed; /* nice parallax-like effect */

@@ -57,6 +57,7 @@ async function handleLogin(req, res) {
 
         res.status(201).json({ message: "Login Successfull", success: true });
     } catch (error) {
+        console.log(error)
         res.status(500).json({ message: "Internal Server Error", success: false });
     }
 };
