@@ -10,7 +10,6 @@ function SignupPage() {
   const navigate = useNavigate();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [temp, setTemp] = useState(false);
   const [signupInfo, setSignupInfo] = useState({
     name: '',
     email: '',
@@ -25,19 +24,11 @@ function SignupPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    console.log(name, value);
-    const copySignupInfo = { ...signupInfo };
-    copySignupInfo[name] = value;
-    setSignupInfo(copySignupInfo);
+    setSignupInfo(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSignup = async (e) => {
     e.preventDefault();
-    console.log("handleSignup");
-    if(temp){
-      setTemp(false);
-      return null;
-    }
     const { name, email, phone, state, city, area, pincode, password, confirmPassword } = signupInfo;
     if (!name || !email || !phone || !state || !city || !area || !pincode || !password || !confirmPassword) {
       return handleError("every field is required!");
@@ -47,7 +38,7 @@ function SignupPage() {
     }
 
     try {
-      const url = "http://localhost:9000/auth/signup";
+      const url = "http://localhost:9000/api/v1/auth/signup";
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -59,24 +50,24 @@ function SignupPage() {
       const result = await response.json();
       const { success, message, error } = result;
       if (success) {
+        localStorage.setItem("isLoggedIn", "true");
+        window.dispatchEvent(new Event("storage"));
         handleSuccess(message);
         setTimeout(() => {
           navigate('/dashboard');
-        }, 1500);
+        }, 1200);
       } else if (error) {
         const details = error.details[0].message;
         handleError(details);
       } else if (!success) {
         handleError(message);
       }
-      console.log(result);
     } catch (error) {
       handleError(error);
     }
   };
 
   const nextStep = () => {
-    console.log("nextStep");
     if (currentStep === 1) {
       const { name, email, phone } = signupInfo;
       if (!name || !email || !phone) {
@@ -85,7 +76,6 @@ function SignupPage() {
     }
 
     if (currentStep === 2) {
-      setTemp(true);
       const { state, city, area, pincode } = signupInfo;
       if (!state || !city || !area || !pincode) {
         return handleError("Fill all fields in Step 2");

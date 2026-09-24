@@ -15,8 +15,8 @@ function signupValidation (req, res, next) {
     });
     const { error } = schema.validate(req.body);
     if(error){
-        res.status(400).json({ message: "Bad Inputs", error: error });
-    };
+        return res.status(400).json({ message: "Bad Inputs", error: error });
+    }
     next();
 };
 

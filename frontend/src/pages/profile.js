@@ -48,7 +48,7 @@ function Profile() {
     if (!isLoggedIn) return handleError("No token found");
 
     try {
-      const response = await fetch("http://localhost:9000/api/users", {
+      const response = await fetch("http://localhost:9000/api/v1/users/me", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -105,7 +105,7 @@ function Profile() {
     if (!isLoggedIn) return;
 
     try {
-      fetch("http://localhost:9000/api/loggedInUser", {
+      fetch("http://localhost:9000/api/v1/users/me", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

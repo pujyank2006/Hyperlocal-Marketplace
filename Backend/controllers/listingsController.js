@@ -5,14 +5,14 @@ async function addNewListings (req, res) {
     try {
         const token = req.cookies.token;
         if(!token) {
-            res.status(400).json({ success: false, error: "Token not provided!" });
+            return res.status(401).json({ success: false, error: "Token not provided!" });
         }
         const decoded_id = jwt.verify(token, process.env.JWT_SECRET);
         const user_id = decoded_id.id;
 
         const { title, description, category, price, owner } = req.body;
 
-        const imagePaths = req.files.map(file => file.path);
+        const imagePaths = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
 
         const newListing = new Listings({
             relatedUser: user_id,
@@ -20,15 +20,16 @@ async function addNewListings (req, res) {
             description,
             category,
             price,
-            owner,
+            owner: owner || "Anonymous",
             images: imagePaths
         });
 
         await newListing.save();
 
-        res.status(200).json({
+        res.status(201).json({
             success: true,
-            message: "Listing created successfully"
+            message: "Listing created successfully",
+            listing: newListing
         });
 
     } catch (error) {

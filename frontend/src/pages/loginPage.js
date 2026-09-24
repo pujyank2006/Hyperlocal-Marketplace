@@ -31,7 +31,7 @@ function Login() {
       return handleError("ID and password is required!")
     }
     try {
-      const url = "http://localhost:9000/auth/login";
+      const url = "http://localhost:9000/api/v1/auth/login";
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -43,11 +43,12 @@ function Login() {
       const result = await response.json();
       const { message, success, error } = result;
       if (success) {
-        localStorage.setItem("isLoggedIn", true);
+        localStorage.setItem("isLoggedIn", "true");
+        window.dispatchEvent(new Event("storage"));
         handleSuccess(message);
         setTimeout(() => {
           navigate('/dashboard');
-        }, 2000);
+        }, 1000);
       } else if (error) {
         const details = error.details[0].message;
         handleError(details);
