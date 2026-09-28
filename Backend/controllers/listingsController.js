@@ -1,15 +1,8 @@
 const Listings = require('../models/listings');
-const jwt = require('jsonwebtoken');
 
-async function addNewListings (req, res) {
+async function addNewListings(req, res) {
     try {
-        const token = req.cookies.token;
-        if(!token) {
-            return res.status(401).json({ success: false, error: "Token not provided!" });
-        }
-        const decoded_id = jwt.verify(token, process.env.JWT_SECRET);
-        const user_id = decoded_id.id;
-
+        const user_id = req.user.id;
         const { title, description, category, price, owner } = req.body;
 
         const imagePaths = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
@@ -26,7 +19,7 @@ async function addNewListings (req, res) {
 
         await newListing.save();
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: "Listing created successfully",
             listing: newListing
@@ -34,27 +27,23 @@ async function addNewListings (req, res) {
 
     } catch (error) {
         console.error("Error creating listing:", error);
-        res.status(500).json({ success: false, message: "Internal server error!!" });
+        return res.status(500).json({ success: false, message: "Internal server error" });
     }
-};
+}
 
-async function getListings (req, res) {
+async function getListings(req, res) {
     try {
-        const token = req.cookies.token;
-        if(!token){
-            return res.status(400).json({ success: false, error: "Un-authorized user" });
-        }
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userID = decoded.id;
+        const userID = req.user.id;
 
-        const listing = await Listings.find({ "relatedUser": userID });
+        const listing = await Listings.find({ relatedUser: userID }).sort({ createdAt: -1 });
 
-        if(!listing){
-            return res.status(400).json({ success: false, error: "Listings details doesn't exist" });
-        }
-        
-        return res.status(200).json({ success: true, message: "Listings details retrieved!", listing });
+        return res.status(200).json({
+            success: true,
+            message: "Listings details retrieved!",
+            listing
+        });
     } catch (error) {
+        console.error("Error fetching user listings:", error);
         return res.status(500).json({ success: false, error: "Internal server error" });
     }
 }
@@ -62,4 +51,4 @@ async function getListings (req, res) {
 module.exports = {
     addNewListings,
     getListings
-}
+};

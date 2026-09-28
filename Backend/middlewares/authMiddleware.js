@@ -1,4 +1,5 @@
 const Joi = require('joi');
+const jwt = require('jsonwebtoken');
 
 // server-side validation by joi for signup page
 function signupValidation (req, res, next) {
@@ -34,8 +35,24 @@ function loginValidation (req, res, next) {
     next();
 };
 
+// JWT token verification middleware
+function verifyToken(req, res, next) {
+    const token = req.cookies.token || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
+    if (!token) {
+        return res.status(401).json({ success: false, error: "Unauthorized access: Token not provided!" });
+    }
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded; // { id: user._id }
+        next();
+    } catch (err) {
+        return res.status(401).json({ success: false, error: "Unauthorized access: Invalid or expired token!" });
+    }
+};
+
 // export the required functions
 module.exports = {
     signupValidation,
     loginValidation,
+    verifyToken,
 };
