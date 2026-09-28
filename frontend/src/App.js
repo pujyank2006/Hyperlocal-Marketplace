@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react'; 
 // Pages
 import Login from './pages/loginPage';
@@ -10,41 +10,40 @@ import ProtectedRoute from './Components/protectedRoute.js';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(
-    localStorage.getItem('isLoggedIn') === 'true'
+    () => localStorage.getItem('isLoggedIn') === 'true'
   );
+  const location = useLocation();
 
-  // Keep state in sync with localStorage (e.g., in case of manual clearing)
+  // Keep state in sync with localStorage on every route change or storage event
   useEffect(() => {
-    const handleStorageChange = () => {
+    const checkAuth = () => {
       setIsLoggedIn(localStorage.getItem('isLoggedIn') === 'true');
     };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+
+    checkAuth();
+    window.addEventListener('storage', checkAuth);
+    return () => window.removeEventListener('storage', checkAuth);
+  }, [location]);
 
   return (
-
     <div className='App'>
       <Routes>
-        {/* unauthorized routes */}
-        {!isLoggedIn && (
-          <>
-            <Route path='/' element={<Home />} />
-            <Route path='/login' element={<Login />} />
-            <Route path='/signup' element={<Signup />} />
-          </>
-        )}
+        {/* Public / Auth routes */}
+        <Route path='/' element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Home />} />
+        <Route path='/login' element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Login />} />
+        <Route path='/signup' element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Signup />} />
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
-          <Route path='/login' element={<Navigate to="/dashboard" />} />
-          <Route path='/signup' element={<Navigate to="/dashboard" />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
+
+        {/* Catch-all fallback */}
+        <Route path="*" element={<Navigate to={isLoggedIn ? "/dashboard" : "/"} replace />} />
       </Routes>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

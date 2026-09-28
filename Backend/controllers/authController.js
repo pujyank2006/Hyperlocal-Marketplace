@@ -20,9 +20,24 @@ async function handleSignup(req, res) {
         const presentUser = new userDetails({ name, email, phone, state, city, area, pincode, password });
         presentUser.password = await bcrypt.hash(password, 10);
         await presentUser.save();
-        res.status(201).json({ success: true, message: 'Signup success' })
+
+        const jwtToken = jwt.sign(
+            { id: presentUser._id },
+            process.env.JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        res.cookie("token", jwtToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24000,
+        });
+
+        res.status(201).json({ success: true, message: 'Signup success' });
     } catch (error){
-        res.status(500).json({ success: false, message: "Internal server error " })
+        console.error("Signup error:", error);
+        res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -50,7 +65,7 @@ async function handleLogin(req, res) {
 
         res.cookie("token", jwtToken, {
             httpOnly: true,
-            secure: true,
+            secure: process.env.NODE_ENV === 'production',
             sameSite: "lax",
             maxAge: 60 * 60 * 24000,
         });

@@ -1,7 +1,7 @@
-// dotenv file to store JWT_SECRET
+// dotenv file to store JWT_SECRET and MONGO_URL
 require('dotenv').config();
 
-// Acquring the requied modules
+// Acquiring required modules
 const express = require('express');
 const connectMongodb = require("./connectDb");
 const bodyParser = require('body-parser');
@@ -9,68 +9,57 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
-const multer = require('multer');
-const jwt = require('jsonwebtoken');
 
-// Acquring the requied files
+// Acquiring route files
 const authRoutes = require('./routes/authRouter');
 const userDetailsRoutes = require('./routes/userDetailsRouter');
 const listingsRoutes = require('./routes/listingsRouter');
 
 const app = express();
+
+// Enable CORS for frontend dev ports (3000 and 3001)
+app.use(cors({
+    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    credentials: true,
+}));
+
 app.use(bodyParser.json());
 app.use(express.json());
 app.use(cookieParser());
 
-app.use(cors({
-    origin: "http://localhost:3001",
-    credentials: true,
-}));
+// Serve static uploaded files publicly
+const uploadsPath = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsPath)) {
+    fs.mkdirSync(uploadsPath, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsPath));
 
+const PORT = process.env.PORT || 9000;
 
-const PORT = process.env.PORT || 8080;
+// Unified RESTful routes (/api/v1/...)
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', userDetailsRoutes);
+app.use('/api/v1/listings', listingsRoutes);
 
-//Authentication Route
+// Legacy routes for backwards compatibility
 app.use('/auth', authRoutes);
-
-//User Details Route
 app.use('/api', userDetailsRoutes);
-
-// Listing Route
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-
-        const subFolder = req.body.owner || 'default';
-        const folderPath = path.join(__dirname, 'uploads', subFolder);
-
-        if (!fs.existsSync(folderPath)) {
-            fs.mkdirSync(folderPath, { recursive: true });
-        }
-
-        cb(null, folderPath);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-        cb(null, uniqueSuffix + '-' + file.originalname);
-    }
-});
-
-const upload = multer({ storage });
-
-// to create a listing
-app.use('/api2', upload.array('images', 10), listingsRoutes);
-
-// to get a listing
+app.use('/api2', listingsRoutes);
 app.use('/api3', listingsRoutes);
 
-// Connecting MongoDB
-connectMongodb("mongodb://localhost:27017/Hyperlocal-Marketplace")
-    .then(() => {
-        console.log("MongoDB connected");
+// MongoDB connection URL logic
+const baseMongoUrl = process.env.MONGO_URL || "mongodb://localhost:27017";
+const mongoUri = baseMongoUrl.includes("Hyperlocal-Marketplace")
+    ? baseMongoUrl
+    : `${baseMongoUrl.replace(/\/$/, '')}/Hyperlocal-Marketplace`;
 
-        // Starting a server
+// Connecting MongoDB and launching server
+connectMongodb(mongoUri)
+    .then(() => {
+        console.log(`MongoDB connected`);
+
         app.listen(PORT, () => {
-            console.log(`Server is running, at ${PORT}`);
+            console.log(`Server is running at http://localhost:${PORT}`);
         });
     })
     .catch((err) => {

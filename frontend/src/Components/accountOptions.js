@@ -9,7 +9,7 @@ function AccountDetails({ open, onClose }) {
 
     const handleLogout = async () => {
         try {
-            const url = "http://localhost:9000/auth/logout"
+            const url = "http://localhost:9000/api/v1/auth/logout";
             const res = await fetch(url, {
                 method: "POST",
                 credentials: "include"
@@ -17,10 +17,11 @@ function AccountDetails({ open, onClose }) {
 
             if (res.ok) {
                 localStorage.removeItem("isLoggedIn");
-                handleSuccess("Successfully logged out!!")
+                window.dispatchEvent(new Event("storage"));
+                handleSuccess("Successfully logged out!!");
                 setTimeout(() => {
                     navigate("/");
-                }, 750)
+                }, 500);
             } else {
                 handleError("Error logging out!!")
             }
