@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { ToastContainer } from 'react-toastify';
 
 import logo from "./assets/favicon.png";
@@ -9,11 +9,17 @@ import styles from "../styles/profile.module.css";
 
 import AccountOptions from '../Components/accountOptions';
 import CreateListing from '../Components/createListing';
+import EditListing from '../Components/editListing';
 import { handleError, handleSuccess } from '../utils';
 
 function Profile() {
   const [isAccountOpen, setAccountOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [userListings, setUserListings] = useState([]);
+  const [isLoadingListings, setIsLoadingListings] = useState(true);
+
+  // Edit Modal State
+  const [editingListing, setEditingListing] = useState(null);
 
   const [personalDetails, setPersonalDetails] = useState({
     name: "",
@@ -100,6 +106,57 @@ function Profile() {
     }
   }
 
+  const fetchUserListings = useCallback(async () => {
+    try {
+      setIsLoadingListings(true);
+      const res = await fetch("http://localhost:9000/api/v1/listings/get-listing", {
+        method: "GET",
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUserListings(data.listing || []);
+      }
+    } catch (err) {
+      console.error("Error fetching listings:", err);
+    } finally {
+      setIsLoadingListings(false);
+    }
+  }, []);
+
+  const handleListingCreated = (newListing) => {
+    setUserListings(prev => [newListing, ...prev]);
+  };
+
+  const handleListingUpdated = (updatedListing) => {
+    setUserListings(prev =>
+      prev.map(item => (item._id === updatedListing._id ? updatedListing : item))
+    );
+  };
+
+  const handleDeleteListing = async (listingId) => {
+    if (!window.confirm("Are you sure you want to delete this listing?")) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:9000/api/v1/listings/${listingId}`, {
+        method: "DELETE",
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (data.success) {
+        handleSuccess("Listing deleted successfully!");
+        setUserListings(prev => prev.filter(item => item._id !== listingId));
+      } else {
+        handleError(data.message || "Failed to delete listing");
+      }
+    } catch (err) {
+      console.error("Error deleting listing:", err);
+      handleError("Network error while deleting listing");
+    }
+  };
+
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
     if (!isLoggedIn) return;
@@ -127,12 +184,14 @@ function Profile() {
           });
         })
         .catch(err => console.error("Error fetching user:", err));
+
+      fetchUserListings();
     } catch (error) {
       console.log(error);
     }
-  }, []);
+  }, [fetchUserListings]);
 
-  if (!user) return <p>Loading...</p>;
+  if (!user) return <p style={{ padding: "40px", textAlign: "center" }}>Loading user profile...</p>;
 
   return (
     <>
@@ -161,7 +220,7 @@ function Profile() {
             {isEditingPersonal ? (
               <form onSubmit={handlePersonalSubmit}>
                 <div className={styles.editDetails}>
-                  <h2>Edit your details</h2>
+                  <h2>Edit Personal Info</h2>
 
                   <input
                     className={styles.inputSpaces}
@@ -196,9 +255,7 @@ function Profile() {
               </form>
             ) : (
               <>
-                <div>
-                  <button className={styles.editButton} onClick={() => setIsEditingPersonal(true)}>Edit</button>
-                </div>
+                <button className={styles.editButton} onClick={() => setIsEditingPersonal(true)}>Edit</button>
                 <h1>{user.name}</h1>
                 <p>{user.email}</p>
                 <p>{user.phone}</p>
@@ -249,14 +306,14 @@ function Profile() {
                 {user.address ? (
                   <>
                     <h1>{user.area}</h1>
-                    <h2>{user.pincode}</h2>
+                    <h2>Pincode: {user.pincode}</h2>
                     <p>{user.address}</p>
                     <button className={styles.editButton} onClick={() => setIsEditingAddress(true)}>Edit</button>
                   </>
                 ) : (
                   <>
                     <p>No address found.</p>
-                    <button onClick={() => setIsEditingAddress(true)}>Add Address</button>
+                    <button className={styles.otherButton} onClick={() => setIsEditingAddress(true)}>Add Address</button>
                   </>
                 )}
               </>
@@ -264,10 +321,75 @@ function Profile() {
           </div>
         </div>
 
-        <div className={styles.listings} style={{ border: "1px solid red" }}>
-          <CreateListing />
+        {/* LISTINGS SECTION */}
+        <div className={styles.listings}>
+          <div className={styles.listingsHeader}>
+            <h2>My Active Listings ({userListings.length})</h2>
+            <CreateListing onListingCreated={handleListingCreated} />
+          </div>
+
+          {isLoadingListings ? (
+            <p>Loading your listings...</p>
+          ) : userListings.length === 0 ? (
+            <div className={styles.emptyState}>
+              <p>🛍️ You haven't posted any listings yet.</p>
+              <p style={{ fontSize: "0.9rem", color: "#94a3b8", marginTop: "6px" }}>
+                Click <strong>+ Post New Listing</strong> above to start selling to your local community!
+              </p>
+            </div>
+          ) : (
+            <div className={styles.listingsGrid}>
+              {userListings.map(item => (
+                <div key={item._id} className={styles.listingCard}>
+                  <img
+                    src={
+                      item.images && item.images.length > 0
+                        ? `http://localhost:9000${item.images[0]}`
+                        : "https://via.placeholder.com/220x140?text=No+Image"
+                    }
+                    alt={item.title}
+                    className={styles.cardImg}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/220x140?text=No+Image";
+                    }}
+                  />
+                  <div className={styles.cardBody}>
+                    <span className={styles.cardCategory}>{item.category}</span>
+                    <div className={styles.cardTitle}>{item.title}</div>
+                    <div className={styles.cardPrice}>₹{item.price}</div>
+                    <div className={styles.cardLoc}>📍 {item.area || item.city || "Local"}</div>
+
+                    <div className={styles.cardActions}>
+                      <button
+                        className={styles.editCardBtn}
+                        onClick={() => setEditingListing(item)}
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        className={styles.deleteCardBtn}
+                        onClick={() => handleDeleteListing(item._id)}
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Edit Listing Modal */}
+      <EditListing
+        listing={editingListing}
+        isOpen={Boolean(editingListing)}
+        onClose={() => setEditingListing(null)}
+        onListingUpdated={handleListingUpdated}
+      />
+
       <ToastContainer />
     </>
   );
