@@ -65,6 +65,67 @@ async function getListings(req, res) {
     }
 }
 
+async function getMarketplaceFeed(req, res) {
+    try {
+        const userID = req.user ? req.user.id : null;
+        const { q, category, locationScope, pincode, city } = req.query;
+
+        let query = {};
+
+        // Fetch user location if logged in
+        let userPincode = pincode;
+        let userCity = city;
+
+        if (userID && (!userPincode || !userCity)) {
+            const currentUser = await User.findById(userID);
+            if (currentUser) {
+                userPincode = userPincode || currentUser.pincode;
+                userCity = userCity || currentUser.city;
+            }
+        }
+
+        // Location Scope Filter: 'pincode', 'city', or 'all'
+        if (locationScope === 'pincode' && userPincode) {
+            query.pincode = userPincode;
+        } else if (locationScope === 'city' && userCity) {
+            query.city = new RegExp(`^${userCity}$`, 'i');
+        } else if (locationScope === 'custom_pincode' && pincode) {
+            query.pincode = pincode;
+        }
+
+        // Category Filter
+        if (category && category !== 'All') {
+            query.category = new RegExp(`^${category.trim()}$`, 'i');
+        }
+
+        // Text Search (title & description & category & area)
+        if (q && q.trim() !== '') {
+            const searchRegex = new RegExp(q.trim(), 'i');
+            query.$or = [
+                { title: searchRegex },
+                { description: searchRegex },
+                { category: searchRegex },
+                { area: searchRegex }
+            ];
+        }
+
+        const listings = await Listings.find(query).sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            count: listings.length,
+            userLocation: {
+                pincode: userPincode || "",
+                city: userCity || ""
+            },
+            listings
+        });
+    } catch (error) {
+        console.error("Error fetching feed:", error);
+        return res.status(500).json({ success: false, message: "Failed to fetch marketplace feed" });
+    }
+}
+
 async function updateListing(req, res) {
     try {
         const userID = req.user.id;
@@ -138,6 +199,7 @@ async function deleteListing(req, res) {
 module.exports = {
     addNewListings,
     getListings,
+    getMarketplaceFeed,
     updateListing,
     deleteListing
 };
