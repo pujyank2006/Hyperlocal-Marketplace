@@ -1,19 +1,36 @@
 const Listings = require('../models/listings');
+const User = require('../models/user');
 
 async function addNewListings(req, res) {
     try {
-        const user_id = req.user.id;
-        const { title, description, category, price, owner } = req.body;
+        const userID = req.user.id;
+        const { title, description, category, price } = req.body;
+
+        if (!title || !category || !price) {
+            return res.status(400).json({
+                success: false,
+                message: "Title, category, and price are required!"
+            });
+        }
+
+        // Fetch user location details
+        const user = await User.findById(userID);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found!" });
+        }
 
         const imagePaths = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
 
         const newListing = new Listings({
-            relatedUser: user_id,
-            title,
-            description,
-            category,
-            price,
-            owner: owner || "Anonymous",
+            relatedUser: userID,
+            title: title.trim(),
+            description: description ? description.trim() : "",
+            category: category.trim(),
+            price: Number(price),
+            owner: user.name || "Anonymous",
+            city: user.city || "",
+            area: user.area || "",
+            pincode: user.pincode || "",
             images: imagePaths
         });
 
@@ -21,13 +38,13 @@ async function addNewListings(req, res) {
 
         return res.status(201).json({
             success: true,
-            message: "Listing created successfully",
+            message: "Listing created successfully!",
             listing: newListing
         });
 
     } catch (error) {
         console.error("Error creating listing:", error);
-        return res.status(500).json({ success: false, message: "Internal server error" });
+        return res.status(500).json({ success: false, message: "Failed to create listing" });
     }
 }
 
@@ -48,7 +65,79 @@ async function getListings(req, res) {
     }
 }
 
+async function updateListing(req, res) {
+    try {
+        const userID = req.user.id;
+        const { id } = req.params;
+        const { title, description, category, price, existingImages } = req.body;
+
+        const listing = await Listings.findById(id);
+        if (!listing) {
+            return res.status(404).json({ success: false, message: "Listing not found!" });
+        }
+
+        if (listing.relatedUser !== userID) {
+            return res.status(403).json({ success: false, message: "Unauthorized to edit this listing!" });
+        }
+
+        let updatedImages = [];
+        if (existingImages) {
+            updatedImages = Array.isArray(existingImages) ? existingImages : [existingImages];
+        }
+
+        if (req.files && req.files.length > 0) {
+            const newImagePaths = req.files.map(file => `/uploads/${file.filename}`);
+            updatedImages = [...updatedImages, ...newImagePaths];
+        }
+
+        if (title) listing.title = title.trim();
+        if (description !== undefined) listing.description = description.trim();
+        if (category) listing.category = category.trim();
+        if (price) listing.price = Number(price);
+        listing.images = updatedImages;
+
+        await listing.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Listing updated successfully!",
+            listing
+        });
+    } catch (error) {
+        console.error("Error updating listing:", error);
+        return res.status(500).json({ success: false, message: "Failed to update listing" });
+    }
+}
+
+async function deleteListing(req, res) {
+    try {
+        const userID = req.user.id;
+        const { id } = req.params;
+
+        const listing = await Listings.findById(id);
+        if (!listing) {
+            return res.status(404).json({ success: false, message: "Listing not found!" });
+        }
+
+        if (listing.relatedUser !== userID) {
+            return res.status(403).json({ success: false, message: "Unauthorized to delete this listing!" });
+        }
+
+        await Listings.findByIdAndDelete(id);
+
+        return res.status(200).json({
+            success: true,
+            message: "Listing deleted successfully!"
+        });
+    } catch (error) {
+        console.error("Error deleting listing:", error);
+        return res.status(500).json({ success: false, message: "Failed to delete listing" });
+    }
+}
+
 module.exports = {
     addNewListings,
-    getListings
+    getListings,
+    updateListing,
+    deleteListing
 };

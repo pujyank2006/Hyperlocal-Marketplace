@@ -19,12 +19,24 @@ const listingsSchema = new schema ({
         required: true
     },
     price: {
-        type: String,
-        required: false
+        type: Number,
+        required: true
     },
     owner: {
         type: String,
         required: true
+    },
+    city: {
+        type: String,
+        required: false
+    },
+    area: {
+        type: String,
+        required: false
+    },
+    pincode: {
+        type: String,
+        required: false
     },
     images: {
         type: [String],
