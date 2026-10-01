@@ -34,6 +34,7 @@ function Dashboard() {
 
   // Selected item & Image Gallery Carousel state
   const [selectedItem, setSelectedItem] = useState(null);
+  const [sellerDetails, setSellerDetails] = useState(null);
   const [activeImgIndex, setActiveImgIndex] = useState(0);
   const [showContact, setShowContact] = useState(false);
 
@@ -70,14 +71,28 @@ function Dashboard() {
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchFeed();
-    }, 300); // 300ms debounce for search query
+    }, 300);
     return () => clearTimeout(timer);
   }, [fetchFeed]);
 
-  const handleOpenItem = (item) => {
+  const handleOpenItem = async (item) => {
     setSelectedItem(item);
     setActiveImgIndex(0);
     setShowContact(false);
+    setSellerDetails(null);
+
+    try {
+      const res = await fetch(`http://localhost:9000/api/v1/listings/detail/${item._id}`, {
+        method: "GET",
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (data.success && data.seller) {
+        setSellerDetails(data.seller);
+      }
+    } catch (err) {
+      console.error("Error fetching seller details:", err);
+    }
   };
 
   const handlePrevImage = (e) => {
@@ -223,7 +238,7 @@ function Dashboard() {
         )}
       </div>
 
-      {/* ITEM DETAILS MODAL WITH LEFT-RIGHT CAROUSEL */}
+      {/* ITEM DETAILS & SELLER CONTACT MODAL */}
       {selectedItem && (
         <div className={styles.modalOverlay} onClick={() => setSelectedItem(null)}>
           <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
@@ -313,24 +328,62 @@ function Dashboard() {
                 </div>
               )}
 
+              {/* SELLER INFORMATION & DIRECT CONTACT ACTION */}
               <div className={styles.contactBox}>
-                <h4>Seller Information</h4>
-                <p>👤 <strong>Owner:</strong> {selectedItem.owner}</p>
-                
+                <h4 style={{ fontSize: '1.05rem', color: '#0f172a', marginBottom: '8px' }}>👤 Seller Information</h4>
+                <p style={{ color: '#334155', marginBottom: '4px' }}>
+                  <strong>Owner:</strong> {sellerDetails?.name || selectedItem.owner}
+                </p>
+                <p style={{ color: '#64748b', fontSize: '0.85rem' }}>
+                  📍 Locality: {sellerDetails?.area || selectedItem.area}, {sellerDetails?.city || selectedItem.city} (Pincode: {sellerDetails?.pincode || selectedItem.pincode})
+                </p>
+
                 {!showContact ? (
                   <button
                     className={styles.viewBtn}
-                    style={{ marginTop: '12px', width: '100%', padding: '10px', fontSize: '0.95rem' }}
+                    style={{ marginTop: '14px', width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: '700' }}
                     onClick={() => setShowContact(true)}
                   >
-                    📞 View Seller Contact Details
+                    📞 Click to View Seller Contact Details
                   </button>
                 ) : (
-                  <div style={{ marginTop: '12px', padding: '10px', background: '#e0f2fe', borderRadius: '8px', color: '#0369a1' }}>
-                    <p>✅ Contact details unlocked!</p>
-                    <p style={{ fontWeight: 'bold', marginTop: '4px' }}>
-                      Posted in locality {selectedItem.area || selectedItem.city}. Connect directly with {selectedItem.owner}.
-                    </p>
+                  <div style={{ marginTop: '14px', padding: '14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.95rem', color: '#0369a1' }}>
+                      <p>📱 <strong>Phone:</strong> {sellerDetails?.phone || "Contact via email below"}</p>
+                      <p>✉️ <strong>Email:</strong> {sellerDetails?.email || "Email unavailable"}</p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                      {sellerDetails?.phone && (
+                        <>
+                          <a
+                            href={`tel:${sellerDetails.phone}`}
+                            className={styles.viewBtn}
+                            style={{ flex: 1, textAlign: 'center', textDecoration: 'none', background: '#16a34a', color: '#fff' }}
+                          >
+                            📞 Call Seller
+                          </a>
+                          <a
+                            href={`https://wa.me/91${sellerDetails.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${sellerDetails.name}, I am interested in your listing: "${selectedItem.title}" on Hyperlocal Marketplace.`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.viewBtn}
+                            style={{ flex: 1, textAlign: 'center', textDecoration: 'none', background: '#25d366', color: '#fff' }}
+                          >
+                            💬 WhatsApp
+                          </a>
+                        </>
+                      )}
+                      {sellerDetails?.email && (
+                        <a
+                          href={`mailto:${sellerDetails.email}?subject=${encodeURIComponent(`Inquiry: ${selectedItem.title}`)}`}
+                          className={styles.viewBtn}
+                          style={{ flex: 1, textAlign: 'center', textDecoration: 'none' }}
+                        >
+                          ✉️ Email
+                        </a>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
