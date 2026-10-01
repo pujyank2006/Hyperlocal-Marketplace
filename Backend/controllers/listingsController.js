@@ -126,6 +126,47 @@ async function getMarketplaceFeed(req, res) {
     }
 }
 
+async function getListingDetails(req, res) {
+    try {
+        const { id } = req.params;
+        const listing = await Listings.findById(id);
+
+        if (!listing) {
+            return res.status(404).json({ success: false, message: "Listing not found!" });
+        }
+
+        // Fetch seller details from User model
+        let sellerInfo = null;
+        if (listing.relatedUser) {
+            const seller = await User.findById(listing.relatedUser).select("name email phone state city area pincode");
+            if (seller) {
+                sellerInfo = {
+                    name: seller.name,
+                    phone: seller.phone,
+                    email: seller.email,
+                    city: seller.city,
+                    area: seller.area,
+                    pincode: seller.pincode
+                };
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            listing,
+            seller: sellerInfo || {
+                name: listing.owner,
+                city: listing.city,
+                area: listing.area,
+                pincode: listing.pincode
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching listing details:", error);
+        return res.status(500).json({ success: false, message: "Failed to fetch listing details" });
+    }
+}
+
 async function updateListing(req, res) {
     try {
         const userID = req.user.id;
@@ -200,6 +241,7 @@ module.exports = {
     addNewListings,
     getListings,
     getMarketplaceFeed,
+    getListingDetails,
     updateListing,
     deleteListing
 };
