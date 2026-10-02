@@ -1,31 +1,79 @@
 .list {
   list-style: none;
-  padding: 10px;
-}
-
-.inputSpaces {
-  width: 300px;
-  height: 30px;
-  border: 2px solid black;
-  border-radius: 10px;
-  margin: 5px;
-}
-
-.button {
-  background-color: black;
-  color: white;
-  border: none;
-  margin: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
+  padding: 0;
+  margin: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .eachList {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  margin-bottom: 15px;
+  gap: 6px;
+}
+
+.eachList label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.inputSpaces {
+  width: 100%;
+  max-width: 400px;
+  height: 44px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 0.95rem;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+  background-color: #ffffff;
+}
+
+.inputSpaces:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.button {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #ffffff;
+  border: none;
+  margin: 12px 6px;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+}
+
+.button:hover {
+  background: linear-gradient(135deg, #1e293b 0%, #0284c7 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.25);
+}
+
+.line {
+  margin-top: 16px;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.line a {
+  color: #0284c7;
+  font-weight: 700;
+  margin-left: 6px;
+  text-decoration: none;
+}
+
+.line a:hover {
+  text-decoration: underline;
 }

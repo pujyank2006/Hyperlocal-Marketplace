@@ -8,33 +8,40 @@ function Home() {
   const navigate = useNavigate();
 
   function directLogin() {
-    setTimeout(() => {
-      navigate('/login');
-    }, 750);
-  };
+    navigate('/login');
+  }
 
   function directSignup() {
-    setTimeout(() => {
-      navigate('/signup');
-    }, 750);
-  };
+    navigate('/signup');
+  }
 
   return (
     <>
       <div className={styles.main}>
         <div className={styles.display}>
-          <img src={favicon} alt='logo' />
-          <p>Welcome to Hyperlocal Marketplace</p>
+          <img src={favicon} alt='Hyperlocal Marketplace Logo' />
+          <h1 className={styles.titleText}>Hyperlocal Marketplace</h1>
+          <p className={styles.subText}>
+            Connect with verified neighbors in your pincode to buy, sell, or trade items & services.
+          </p>
+          
           <div className={styles.buttonClass}>
-            <button className={styles.button} onClick={directLogin}>Login</button>
-            <button className={styles.button} onClick={directSignup}>Signup</button>
+            <button className={styles.primaryBtn} onClick={directLogin}>Login</button>
+            <button className={styles.secondaryBtn} onClick={directSignup}>Signup</button>
+          </div>
+
+          <div className={styles.featuresList}>
+            <span>📍 Pincode Filter</span>
+            <span>•</span>
+            <span>⚡ Direct WhatsApp</span>
+            <span>•</span>
+            <span>🛡️ Verified Locals</span>
           </div>
         </div>
       </div>
-        <div className={styles.footer}><Footer /></div>
+      <div className={styles.footer}><Footer /></div>
     </>
-
-  )
+  );
 }
 
-export default Home
+export default Home;
