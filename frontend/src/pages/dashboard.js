@@ -1,12 +1,8 @@
-import { Link } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { ToastContainer } from 'react-toastify';
 
-import logo from "./assets/favicon.png";
-import title2 from "./assets/Title2.png";
-import account from "./assets/accountCircle.svg";
 import styles from "../styles/dashboard.module.css";
-import AccountOptions from '../Components/accountOptions';
+import Navbar from '../Components/Navbar';
 import { handleError } from '../utils';
 
 const CATEGORIES = [
@@ -22,7 +18,6 @@ const CATEGORIES = [
 ];
 
 function Dashboard() {
-  const [isAccountOpen, setAccountOpen] = useState(false);
   const [listings, setListings] = useState([]);
   const [userLocation, setUserLocation] = useState({ pincode: '', city: '' });
   const [isLoading, setIsLoading] = useState(true);
@@ -113,18 +108,8 @@ function Dashboard() {
 
   return (
     <>
-      {/* HEADER */}
-      <div className={styles.mainHeader}>
-        <Link to="/">
-          <img alt='logo' src={logo} width='40px' height='40px' />
-          &nbsp;
-          <img alt='title' src={title2} className={styles.title} />
-        </Link>
-        <button className={styles.button} onClick={() => setAccountOpen(!isAccountOpen)}>
-          <img alt='account' src={account} width='40px' height='40px' />
-        </button>
-        <AccountOptions open={isAccountOpen} onClose={() => setAccountOpen(false)} />
-      </div>
+      {/* UNIFIED MODERN HEADER */}
+      <Navbar />
 
       {/* BODY */}
       <div className={styles.container}>

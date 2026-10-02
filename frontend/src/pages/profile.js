@@ -2,12 +2,9 @@ import { Link } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import { ToastContainer } from 'react-toastify';
 
-import logo from "./assets/favicon.png";
-import title2 from "./assets/Title2.png";
-import account from "./assets/accountCircle.svg";
 import styles from "../styles/profile.module.css";
 
-import AccountOptions from '../Components/accountOptions';
+import Navbar from '../Components/Navbar';
 import CreateListing from '../Components/createListing';
 import EditListing from '../Components/editListing';
 import { handleError, handleSuccess } from '../utils';
@@ -195,21 +192,8 @@ function Profile() {
 
   return (
     <>
-      {/* HEADER */}
-      <div className={styles.mainHeader}>
-        <Link to="/">
-          <img alt="logo" src={logo} width="40" height="40" />
-          &nbsp;
-          <img alt="title" src={title2} className={styles.title} />
-        </Link>
-        <button
-          className={styles.Accountbutton}
-          onClick={() => setAccountOpen(!isAccountOpen)}
-        >
-          <img alt="account" src={account} width="40" height="40" />
-        </button>
-        <AccountOptions open={isAccountOpen} onClose={() => setAccountOpen(false)} />
-      </div>
+      {/* UNIFIED MODERN HEADER */}
+      <Navbar />
 
       {/* BODY */}
       <div className={styles.information}>

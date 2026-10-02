@@ -19,11 +19,12 @@ function AccountDetails({ open, onClose }) {
                 localStorage.removeItem("isLoggedIn");
                 window.dispatchEvent(new Event("storage"));
                 handleSuccess("Successfully logged out!!");
+                onClose();
                 setTimeout(() => {
                     navigate("/");
                 }, 500);
             } else {
-                handleError("Error logging out!!")
+                handleError("Error logging out!!");
             }
         } catch(error) {
             handleError(error);
@@ -31,11 +32,16 @@ function AccountDetails({ open, onClose }) {
     };
 
     return (
-        <div className={styles.overlay}>
-            <div className={styles.button} onClick={() => navigate('/profile')}>Profile</div>
+        <div className={styles.overlay} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.button} onClick={() => { onClose(); navigate('/profile'); }}>
+                👤 Profile
+            </div>
             <div className={styles.divider}></div>
-            <div className={styles.button} onClick={handleLogout}>Logout</div>
+            <div className={`${styles.button} ${styles.logoutBtn}`} onClick={handleLogout}>
+                🚪 Logout
+            </div>
         </div>
-    )
+    );
 }
-export default AccountDetails
+
+export default AccountDetails;
