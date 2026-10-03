@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import styles from '../ComponentStyles/createListing.module.css';
+import { listingService } from '../services/api';
 import { handleError, handleSuccess } from '../utils';
 
 const CATEGORIES = [
@@ -94,13 +95,7 @@ function EditListing({ listing, isOpen, onClose, onListingUpdated }) {
         data.append('images', file);
       });
 
-      const response = await fetch(`http://localhost:9000/api/v1/listings/${listing._id}`, {
-        method: "PUT",
-        credentials: "include",
-        body: data
-      });
-
-      const result = await response.json();
+      const result = await listingService.updateListing(listing._id, data);
 
       if (result.success) {
         handleSuccess("Listing updated successfully!");

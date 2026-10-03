@@ -1,33 +1,23 @@
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import styles from "../ComponentStyles/accountOptions.module.css";
 import { handleError, handleSuccess } from "../utils";
 
 function AccountDetails({ open, onClose }) {
     const navigate = useNavigate();
+    const { logout } = useAuth();
 
     if (!open) return null;
 
     const handleLogout = async () => {
         try {
-            const url = "http://localhost:9000/api/v1/auth/logout";
-            const res = await fetch(url, {
-                method: "POST",
-                credentials: "include"
-            });
-
-            if (res.ok) {
-                localStorage.removeItem("isLoggedIn");
-                window.dispatchEvent(new Event("storage"));
-                handleSuccess("Successfully logged out!!");
-                onClose();
-                setTimeout(() => {
-                    navigate("/");
-                }, 500);
-            } else {
-                handleError("Error logging out!!");
-            }
-        } catch(error) {
-            handleError(error);
+            await logout();
+            handleSuccess("Successfully logged out!");
+            onClose();
+            navigate("/login");
+        } catch (error) {
+            console.error("Logout error:", error);
+            handleError("Error logging out!");
         }
     };
 

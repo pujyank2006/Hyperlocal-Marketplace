@@ -3,6 +3,8 @@ import { ToastContainer } from 'react-toastify';
 
 import styles from "../styles/dashboard.module.css";
 import Navbar from '../Components/Navbar';
+import { SkeletonGrid } from '../Components/SkeletonLoader';
+import { listingService } from '../services/api';
 import { handleError } from '../utils';
 
 const CATEGORIES = [
@@ -36,17 +38,12 @@ function Dashboard() {
   const fetchFeed = useCallback(async () => {
     try {
       setIsLoading(true);
-      const params = new URLSearchParams();
-      if (searchQuery.trim()) params.append('q', searchQuery.trim());
-      if (selectedCategory !== 'All') params.append('category', selectedCategory);
-      if (locationScope) params.append('locationScope', locationScope);
+      const params = {};
+      if (searchQuery.trim()) params.q = searchQuery.trim();
+      if (selectedCategory !== 'All') params.category = selectedCategory;
+      if (locationScope) params.locationScope = locationScope;
 
-      const response = await fetch(`http://localhost:9000/api/v1/listings/feed?${params.toString()}`, {
-        method: 'GET',
-        credentials: 'include'
-      });
-
-      const data = await response.json();
+      const data = await listingService.getFeed(params);
       if (data.success) {
         setListings(data.listings || []);
         if (data.userLocation) {
@@ -77,11 +74,7 @@ function Dashboard() {
     setSellerDetails(null);
 
     try {
-      const res = await fetch(`http://localhost:9000/api/v1/listings/detail/${item._id}`, {
-        method: "GET",
-        credentials: "include"
-      });
-      const data = await res.json();
+      const data = await listingService.getListingDetails(item._id);
       if (data.success && data.seller) {
         setSellerDetails(data.seller);
       }
@@ -174,7 +167,9 @@ function Dashboard() {
 
         {/* FEED GRID */}
         {isLoading ? (
-          <p style={{ textAlign: 'center', padding: '40px' }}>Loading marketplace feed...</p>
+          <div className={styles.feedGrid}>
+            <SkeletonGrid count={6} />
+          </div>
         ) : listings.length === 0 ? (
           <div className={styles.emptyState}>
             <h2>🛍️ No listings found</h2>
@@ -262,7 +257,7 @@ function Dashboard() {
                         ? `http://localhost:9000${selectedItem.images[activeImgIndex]}`
                         : "https://via.placeholder.com/600x280?text=No+Image"
                     }
-                    alt={`${selectedItem.title} - photo ${activeImgIndex + 1}`}
+                    alt={`${selectedItem.title} ${activeImgIndex + 1}`}
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.src = "https://via.placeholder.com/600x280?text=No+Image";

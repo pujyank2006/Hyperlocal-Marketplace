@@ -80,7 +80,7 @@ async function handleLogin(req, res) {
 // Logical function to logout the user
 async function handleLogout(req, res) {
     res.clearCookie("token");
-    res.json({ message: "Logged out!!!" });
+    res.json({ success: true, message: "Logged out!!!" });
 };
 
 // export the required functions

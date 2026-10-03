@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import styles from '../ComponentStyles/createListing.module.css';
+import { listingService } from '../services/api';
 import { handleError, handleSuccess } from '../utils';
 
 const CATEGORIES = [
@@ -93,13 +94,7 @@ function CreateListing({ onListingCreated }) {
         data.append('images', file);
       });
 
-      const response = await fetch("http://localhost:9000/api/v1/listings/create-listing", {
-        method: "POST",
-        credentials: "include",
-        body: data
-      });
-
-      const result = await response.json();
+      const result = await listingService.createListing(data);
 
       if (result.success) {
         handleSuccess("Listing posted successfully!");
