@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
+import { useAuth } from '../context/AuthContext';
 import { handleError, handleSuccess } from '../utils';
 
 import styles from "../styles/authPages.module.css";
@@ -8,8 +9,10 @@ import SignupLayout from "../Components/signupLayout";
 
 function SignupPage() {
   const navigate = useNavigate();
+  const { signup } = useAuth();
 
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [signupInfo, setSignupInfo] = useState({
     name: '',
     email: '',
@@ -60,7 +63,6 @@ function SignupPage() {
   const handleSignup = async (e) => {
     e.preventDefault();
 
-    // If user pressed Enter on keyboard during Step 1 or Step 2, advance step instead of submitting
     if (currentStep < 3) {
       nextStep();
       return;
@@ -82,34 +84,20 @@ function SignupPage() {
     }
 
     try {
-      const url = "http://localhost:9000/api/v1/auth/signup";
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: "include",
-        body: JSON.stringify(signupInfo)
-      });
-      const result = await response.json();
-      const { success, message, error } = result;
-
-      if (success) {
-        localStorage.setItem("isLoggedIn", "true");
-        window.dispatchEvent(new Event("storage"));
-        handleSuccess(message || "Signup successful!");
+      setIsSubmitting(true);
+      const result = await signup(signupInfo);
+      if (result.success) {
+        handleSuccess(result.message || "Signup successful!");
         setTimeout(() => {
           navigate('/dashboard');
-        }, 1200);
-      } else if (error && error.details) {
-        const details = error.details[0].message;
-        handleError(details);
+        }, 800);
       } else {
-        handleError(message || "Signup failed. Please try again.");
+        handleError(result.message || "Signup failed");
       }
     } catch (error) {
-      console.error(error);
-      handleError("Network error during signup. Please check server.");
+      handleError(error.message || "Network error during signup");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -208,12 +196,14 @@ function SignupPage() {
         <ToastContainer />
 
         {currentStep > 1 && (
-          <button type="button" className={styles.button} onClick={prevStep}>Previous</button>
+          <button type="button" className={styles.button} onClick={prevStep} disabled={isSubmitting}>Previous</button>
         )}
         {currentStep < 3 ? (
-          <button type="button" className={styles.button} onClick={nextStep}>Next</button>
+          <button type="button" className={styles.button} onClick={nextStep} disabled={isSubmitting}>Next</button>
         ) : (
-          <button type="submit" className={styles.button}>Submit</button>
+          <button type="submit" className={styles.button} disabled={isSubmitting}>
+            {isSubmitting ? "Creating account..." : "Submit"}
+          </button>
         )}
 
       </form>

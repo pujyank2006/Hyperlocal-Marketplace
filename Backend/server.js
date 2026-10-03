@@ -1,23 +1,23 @@
-// dotenv file to store JWT_SECRET and MONGO_URL
 require('dotenv').config();
 
-// Acquiring required modules
 const express = require('express');
-const connectMongodb = require("./connectDb");
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
 
-// Acquiring route files
+const connectDB = require('./config/db');
+const errorHandler = require('./middlewares/errorHandler');
+
+// Route imports
 const authRoutes = require('./routes/authRouter');
 const userDetailsRoutes = require('./routes/userDetailsRouter');
 const listingsRoutes = require('./routes/listingsRouter');
 
 const app = express();
 
-// Enable CORS for frontend dev ports (3000 and 3001)
+// Enable CORS for frontend dev ports
 app.use(cors({
     origin: ['http://localhost:3000', 'http://localhost:3001'],
     credentials: true,
@@ -41,27 +41,18 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userDetailsRoutes);
 app.use('/api/v1/listings', listingsRoutes);
 
-// Legacy routes for backwards compatibility
+// Legacy route aliases for backwards compatibility
 app.use('/auth', authRoutes);
 app.use('/api', userDetailsRoutes);
 app.use('/api2', listingsRoutes);
 app.use('/api3', listingsRoutes);
 
-// MongoDB connection URL logic
-const baseMongoUrl = process.env.MONGO_URL || "mongodb://localhost:27017";
-const mongoUri = baseMongoUrl.includes("Hyperlocal-Marketplace")
-    ? baseMongoUrl
-    : `${baseMongoUrl.replace(/\/$/, '')}/Hyperlocal-Marketplace`;
+// Global Error Handler
+app.use(errorHandler);
 
 // Connecting MongoDB and launching server
-connectMongodb(mongoUri)
-    .then(() => {
-        console.log(`MongoDB connected`);
-
-        app.listen(PORT, () => {
-            console.log(`Server is running at http://localhost:${PORT}`);
-        });
-    })
-    .catch((err) => {
-        console.error("Failed to connect to MongoDB", err);
+connectDB().then(() => {
+    app.listen(PORT, () => {
+        console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on http://localhost:${PORT}`);
     });
+});

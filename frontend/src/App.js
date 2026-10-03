@@ -1,5 +1,6 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react'; 
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
+
 // Pages
 import Login from './pages/loginPage';
 import Home from './pages/homePage';
@@ -9,21 +10,15 @@ import Profile from './pages/profile';
 import ProtectedRoute from './Components/protectedRoute.js';
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(
-    () => localStorage.getItem('isLoggedIn') === 'true'
-  );
-  const location = useLocation();
+  const { isLoggedIn, isLoadingAuth } = useAuth();
 
-  // Keep state in sync with localStorage on every route change or storage event
-  useEffect(() => {
-    const checkAuth = () => {
-      setIsLoggedIn(localStorage.getItem('isLoggedIn') === 'true');
-    };
-
-    checkAuth();
-    window.addEventListener('storage', checkAuth);
-    return () => window.removeEventListener('storage', checkAuth);
-  }, [location]);
+  if (isLoadingAuth) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#0f172a', color: '#fff' }}>
+        <p style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>🛍️ Loading Hyperlocal Marketplace...</p>
+      </div>
+    );
+  }
 
   return (
     <div className='App'>

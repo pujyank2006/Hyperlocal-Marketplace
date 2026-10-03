@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import { ToastContainer } from 'react-toastify';
 
@@ -7,10 +6,11 @@ import styles from "../styles/profile.module.css";
 import Navbar from '../Components/Navbar';
 import CreateListing from '../Components/createListing';
 import EditListing from '../Components/editListing';
+import { SkeletonGrid } from '../Components/SkeletonLoader';
+import { userService, listingService } from '../services/api';
 import { handleError, handleSuccess } from '../utils';
 
 function Profile() {
-  const [isAccountOpen, setAccountOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [userListings, setUserListings] = useState([]);
   const [isLoadingListings, setIsLoadingListings] = useState(true);
@@ -47,23 +47,9 @@ function Profile() {
   }
 
   async function updateUser(data) {
-    const isLoggedIn = localStorage.getItem("isLoggedIn");
-    if (!isLoggedIn) return handleError("No token found");
-
     try {
-      const response = await fetch("http://localhost:9000/api/v1/users/me", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-      const { success } = result;
-
-      if (success) {
+      const result = await userService.updateProfile(data);
+      if (result.success) {
         setUser(prev => ({ ...prev, ...data }));
         return true;
       } else {
@@ -71,7 +57,8 @@ function Profile() {
       }
     } catch (err) {
       console.error(err);
-      handleError("Network error");
+      handleError(err.message || "Network error");
+      return false;
     }
   }
 
@@ -84,8 +71,6 @@ function Profile() {
     if (success) {
       handleSuccess("Details updated successfully");
       setIsEditingPersonal(false);
-    } else {
-      handleError("Server error!!");
     }
   }
 
@@ -98,19 +83,13 @@ function Profile() {
     if (success) {
       handleSuccess("Details updated successfully");
       setIsEditingAddress(false);
-    } else {
-      handleError("Server Error");
     }
   }
 
   const fetchUserListings = useCallback(async () => {
     try {
       setIsLoadingListings(true);
-      const res = await fetch("http://localhost:9000/api/v1/listings/get-listing", {
-        method: "GET",
-        credentials: "include"
-      });
-      const data = await res.json();
+      const data = await listingService.getUserListings();
       if (data.success) {
         setUserListings(data.listing || []);
       }
@@ -137,11 +116,7 @@ function Profile() {
     }
 
     try {
-      const res = await fetch(`http://localhost:9000/api/v1/listings/${listingId}`, {
-        method: "DELETE",
-        credentials: "include"
-      });
-      const data = await res.json();
+      const data = await listingService.deleteListing(listingId);
       if (data.success) {
         handleSuccess("Listing deleted successfully!");
         setUserListings(prev => prev.filter(item => item._id !== listingId));
@@ -155,37 +130,25 @@ function Profile() {
   };
 
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem("isLoggedIn");
-    if (!isLoggedIn) return;
-
-    try {
-      fetch("http://localhost:9000/api/v1/users/me", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      })
-        .then(res => res.json())
-        .then(data => {
+    userService.getProfile()
+      .then(data => {
+        if (data.success && data.user) {
           setUser(data.user);
           setPersonalDetails({
-            name: data.user?.name || "",
-            email: data.user?.email || "",
-            phone: data.user?.phone || "",
+            name: data.user.name || "",
+            email: data.user.email || "",
+            phone: data.user.phone || "",
           });
           setAddressDetails({
-            area: data.user?.area || "",
-            pincode: data.user?.pincode || "",
-            address: data.user?.address || "",
+            area: data.user.area || "",
+            pincode: data.user.pincode || "",
+            address: data.user.address || "",
           });
-        })
-        .catch(err => console.error("Error fetching user:", err));
+        }
+      })
+      .catch(err => console.error("Error fetching user:", err));
 
-      fetchUserListings();
-    } catch (error) {
-      console.log(error);
-    }
+    fetchUserListings();
   }, [fetchUserListings]);
 
   if (!user) return <p style={{ padding: "40px", textAlign: "center" }}>Loading user profile...</p>;
@@ -313,7 +276,9 @@ function Profile() {
           </div>
 
           {isLoadingListings ? (
-            <p>Loading your listings...</p>
+            <div className={styles.listingsGrid}>
+              <SkeletonGrid count={4} />
+            </div>
           ) : userListings.length === 0 ? (
             <div className={styles.emptyState}>
               <p>🛍️ You haven't posted any listings yet.</p>
