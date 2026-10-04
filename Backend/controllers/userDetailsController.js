@@ -1,4 +1,5 @@
 const User = require('../models/user');
+const Listings = require('../models/listings');
 
 // Controller function to update any user details
 async function updateDetails(req, res) {
@@ -17,6 +18,20 @@ async function updateDetails(req, res) {
 
         if (!updatedUser) {
             return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // Sync updated location & owner name across all listings owned by this user
+        const listingUpdate = {};
+        if (updateData.area !== undefined) listingUpdate.area = updateData.area;
+        if (updateData.city !== undefined) listingUpdate.city = updateData.city;
+        if (updateData.pincode !== undefined) listingUpdate.pincode = updateData.pincode;
+        if (updateData.name !== undefined) listingUpdate.owner = updateData.name;
+
+        if (Object.keys(listingUpdate).length > 0) {
+            await Listings.updateMany(
+                { $or: [{ relatedUser: userID }, { relatedUser: userID.toString() }] },
+                { $set: listingUpdate }
+            );
         }
 
         return res.status(200).json({

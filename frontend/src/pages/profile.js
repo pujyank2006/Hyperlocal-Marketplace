@@ -7,10 +7,12 @@ import Navbar from '../Components/Navbar';
 import CreateListing from '../Components/createListing';
 import EditListing from '../Components/editListing';
 import { SkeletonGrid } from '../Components/SkeletonLoader';
+import { useAuth } from '../context/AuthContext';
 import { userService, listingService } from '../services/api';
 import { handleError, handleSuccess } from '../utils';
 
 function Profile() {
+  const { updateUserState } = useAuth();
   const [user, setUser] = useState(null);
   const [userListings, setUserListings] = useState([]);
   const [isLoadingListings, setIsLoadingListings] = useState(true);
@@ -51,6 +53,7 @@ function Profile() {
       const result = await userService.updateProfile(data);
       if (result.success) {
         setUser(prev => ({ ...prev, ...data }));
+        if (updateUserState) updateUserState(data);
         return true;
       } else {
         return false;
@@ -71,6 +74,7 @@ function Profile() {
     if (success) {
       handleSuccess("Details updated successfully");
       setIsEditingPersonal(false);
+      fetchUserListings();
     }
   }
 
@@ -83,6 +87,7 @@ function Profile() {
     if (success) {
       handleSuccess("Details updated successfully");
       setIsEditingAddress(false);
+      fetchUserListings();
     }
   }
 
