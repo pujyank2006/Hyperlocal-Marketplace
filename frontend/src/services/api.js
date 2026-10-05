@@ -60,3 +60,12 @@ export const listingService = {
   updateListing: (id, formData) => request(`/listings/${id}`, { method: 'PUT', body: formData }),
   deleteListing: (id) => request(`/listings/${id}`, { method: 'DELETE' }),
 };
+
+// Chat & Negotiation API Services
+export const chatService = {
+  startConversation: (listingId, sellerId) => request('/chat/start', { method: 'POST', body: JSON.stringify({ listingId, sellerId }) }),
+  getConversations: () => request('/chat/conversations', { method: 'GET' }),
+  getMessages: (conversationId) => request(`/chat/messages/${conversationId}`, { method: 'GET' }),
+  sendMessage: (conversationId, text, offerPrice) => request('/chat/message', { method: 'POST', body: JSON.stringify({ conversationId, text, offerPrice }) }),
+  respondOffer: (messageId, status) => request(`/chat/offer/${messageId}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+};

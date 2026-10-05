@@ -3,6 +3,7 @@ import { ToastContainer } from 'react-toastify';
 
 import styles from "../styles/dashboard.module.css";
 import Navbar from '../Components/Navbar';
+import ChatWidget from '../Components/ChatWidget';
 import { SkeletonGrid } from '../Components/SkeletonLoader';
 import { listingService } from '../services/api';
 import { handleError } from '../utils';
@@ -34,6 +35,9 @@ function Dashboard() {
   const [sellerDetails, setSellerDetails] = useState(null);
   const [activeImgIndex, setActiveImgIndex] = useState(0);
   const [showContact, setShowContact] = useState(false);
+
+  // Chat Target State
+  const [chatTarget, setChatTarget] = useState({ isOpen: false, listingId: null, sellerId: null });
 
   const fetchFeed = useCallback(async () => {
     try {
@@ -318,10 +322,24 @@ function Dashboard() {
                   📍 Locality: {sellerDetails?.area || selectedItem.area}, {sellerDetails?.city || selectedItem.city} (Pincode: {sellerDetails?.pincode || selectedItem.pincode})
                 </p>
 
+                <button
+                  className={styles.viewBtn}
+                  style={{ marginTop: '14px', width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: '700', background: '#0284c7', color: '#fff' }}
+                  onClick={() => {
+                    setChatTarget({
+                      isOpen: true,
+                      listingId: selectedItem._id,
+                      sellerId: selectedItem.relatedUser
+                    });
+                  }}
+                >
+                  💬 Chat with Seller & Make Offer
+                </button>
+
                 {!showContact ? (
                   <button
                     className={styles.viewBtn}
-                    style={{ marginTop: '14px', width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: '700' }}
+                    style={{ marginTop: '8px', width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: '700', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' }}
                     onClick={() => setShowContact(true)}
                   >
                     📞 Click to View Seller Contact Details
@@ -371,6 +389,13 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      <ChatWidget
+        isOpen={chatTarget.isOpen}
+        onClose={() => setChatTarget({ isOpen: false, listingId: null, sellerId: null })}
+        initialListingId={chatTarget.listingId}
+        initialSellerId={chatTarget.sellerId}
+      />
 
       <ToastContainer />
     </>
