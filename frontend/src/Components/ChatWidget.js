@@ -7,6 +7,13 @@ import styles from '../ComponentStyles/chatWidget.module.css';
 
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:9000";
 
+const isSameId = (a, b) => {
+  if (!a || !b) return false;
+  const idA = typeof a === 'object' ? a._id || a.id : a;
+  const idB = typeof b === 'object' ? b._id || b.id : b;
+  return String(idA) === String(idB);
+};
+
 function ChatWidget({ isOpen, onClose, initialConversationId = null, initialListingId = null, initialSellerId = null }) {
   const { user } = useAuth();
   const [conversations, setConversations] = useState([]);
@@ -33,28 +40,49 @@ function ChatWidget({ isOpen, onClose, initialConversationId = null, initialList
     });
 
     socketRef.current.on('connect', () => {
-      socketRef.current.emit('join_room', `user_${user._id}`);
+      if (user?._id) {
+        socketRef.current.emit('join_room', `user_${user._id}`);
+      }
     });
 
     socketRef.current.on('receive_message', (newMsg) => {
       setMessages(prev => {
-        if (prev.some(m => m._id === newMsg._id)) return prev;
+        if (prev.some(m => isSameId(m._id, newMsg._id))) return prev;
         return [...prev, newMsg];
       });
-      scrollToBottom();
+
+      // Update sidebar preview silently
+      setConversations(prev =>
+        prev.map(c =>
+          isSameId(c._id, newMsg.conversationId)
+            ? { ...c, lastMessage: newMsg.text || 'New message', lastMessageTime: new Date() }
+            : c
+        )
+      );
+
+      setTimeout(scrollToBottom, 50);
     });
 
     socketRef.current.on('offer_updated', ({ messageId, status, responseMsg }) => {
       setMessages(prev =>
-        prev.map(m => (m._id === messageId ? { ...m, offerStatus: status } : m))
+        prev.map(m => (isSameId(m._id, messageId) ? { ...m, offerStatus: status } : m))
       );
       if (responseMsg) {
         setMessages(prev => {
-          if (prev.some(m => m._id === responseMsg._id)) return prev;
+          if (prev.some(m => isSameId(m._id, responseMsg._id))) return prev;
           return [...prev, responseMsg];
         });
+
+        // Update sidebar preview silently
+        setConversations(prev =>
+          prev.map(c =>
+            isSameId(c._id, responseMsg.conversationId)
+              ? { ...c, lastMessage: responseMsg.text, lastMessageTime: new Date() }
+              : c
+          )
+        );
       }
-      scrollToBottom();
+      setTimeout(scrollToBottom, 50);
     });
 
     return () => {
@@ -77,37 +105,22 @@ function ChatWidget({ isOpen, onClose, initialConversationId = null, initialList
     }
   }, []);
 
-  // Fetch all conversations for current user
-  const fetchConversations = useCallback(async () => {
+  // Fetch all conversations for current user silently without setting global loading state unless requested
+  const fetchConversations = useCallback(async (showLoading = false) => {
     try {
-      setIsLoading(true);
+      if (showLoading) setIsLoading(true);
       const data = await chatService.getConversations();
       if (data.success) {
-        const convList = data.conversations || [];
-        setConversations(convList);
-
-        // If target conversation or target listing was specified
-        if (initialConversationId) {
-          const found = convList.find(c => c._id === initialConversationId);
-          if (found) {
-            setActiveConv(found);
-            loadMessages(found._id);
-            if (socketRef.current) socketRef.current.emit('join_room', found._id);
-          }
-        } else if (convList.length > 0 && !activeConv) {
-          setActiveConv(convList[0]);
-          loadMessages(convList[0]._id);
-          if (socketRef.current) socketRef.current.emit('join_room', convList[0]._id);
-        }
+        setConversations(data.conversations || []);
       }
     } catch (err) {
       console.error("Error fetching conversations:", err);
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
-  }, [initialConversationId, activeConv, loadMessages]);
+  }, []);
 
-  // Auto start conversation if opening via listing "Chat with Seller"
+  // Auto initialize or select conversation when drawer opens
   useEffect(() => {
     if (!isOpen) return;
 
@@ -118,7 +131,7 @@ function ChatWidget({ isOpen, onClose, initialConversationId = null, initialList
             setActiveConv(data.conversation);
             loadMessages(data.conversation._id);
             if (socketRef.current) socketRef.current.emit('join_room', data.conversation._id);
-            fetchConversations();
+            fetchConversations(false);
           }
         })
         .catch(err => {
@@ -126,9 +139,31 @@ function ChatWidget({ isOpen, onClose, initialConversationId = null, initialList
           handleError(err.message || "Could not start chat");
         });
     } else {
-      fetchConversations();
+      setIsLoading(true);
+      chatService.getConversations()
+        .then(data => {
+          if (data.success) {
+            const convList = data.conversations || [];
+            setConversations(convList);
+            if (initialConversationId) {
+              const found = convList.find(c => isSameId(c._id, initialConversationId));
+              if (found) {
+                setActiveConv(found);
+                loadMessages(found._id);
+                if (socketRef.current) socketRef.current.emit('join_room', found._id);
+              }
+            } else if (convList.length > 0) {
+              setActiveConv(convList[0]);
+              loadMessages(convList[0]._id);
+              if (socketRef.current) socketRef.current.emit('join_room', convList[0]._id);
+            }
+          }
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     }
-  }, [isOpen, initialListingId, initialSellerId, fetchConversations, loadMessages]);
+  }, [isOpen, initialListingId, initialSellerId, initialConversationId, loadMessages, fetchConversations]);
 
   const handleSelectConv = (conv) => {
     if (activeConv && socketRef.current) {
@@ -154,13 +189,22 @@ function ChatWidget({ isOpen, onClose, initialConversationId = null, initialList
       );
 
       if (data.success && data.message) {
-        setMessages(prev => [...prev, data.message]);
+        const newMsg = data.message;
+        setMessages(prev => (prev.some(m => isSameId(m._id, newMsg._id)) ? prev : [...prev, newMsg]));
         setInputText('');
         setOfferPrice('');
         setShowOfferBox(false);
-        scrollToBottom();
-        // Refresh conversation list preview
-        fetchConversations();
+        setTimeout(scrollToBottom, 50);
+
+        // Update sidebar preview silently without flickering
+        setConversations(prev =>
+          prev.map(c =>
+            isSameId(c._id, activeConv._id)
+              ? { ...c, lastMessage: newMsg.text || 'Price offer sent', lastMessageTime: new Date() }
+              : c
+          )
+        );
+        fetchConversations(false);
       }
     } catch (err) {
       console.error("Error sending message:", err);
@@ -174,12 +218,23 @@ function ChatWidget({ isOpen, onClose, initialConversationId = null, initialList
       if (data.success) {
         handleSuccess(`Offer ${status}!`);
         setMessages(prev =>
-          prev.map(m => (m._id === messageId ? { ...m, offerStatus: status } : m))
+          prev.map(m => (isSameId(m._id, messageId) ? { ...m, offerStatus: status } : m))
         );
         if (data.responseMessage) {
-          setMessages(prev => [...prev, data.responseMessage]);
+          const respMsg = data.responseMessage;
+          setMessages(prev => (prev.some(m => isSameId(m._id, respMsg._id)) ? prev : [...prev, respMsg]));
+
+          // Update sidebar preview silently without flickering
+          setConversations(prev =>
+            prev.map(c =>
+              isSameId(c._id, activeConv._id)
+                ? { ...c, lastMessage: respMsg.text, lastMessageTime: new Date() }
+                : c
+            )
+          );
         }
-        scrollToBottom();
+        setTimeout(scrollToBottom, 50);
+        fetchConversations(false);
       }
     } catch (err) {
       console.error("Error responding to offer:", err);
@@ -191,7 +246,7 @@ function ChatWidget({ isOpen, onClose, initialConversationId = null, initialList
 
   const getPartnerName = (conv) => {
     if (!conv || !conv.participants) return "Seller";
-    const partner = conv.participants.find(p => p._id !== user?._id);
+    const partner = conv.participants.find(p => !isSameId(p._id, user?._id));
     return partner ? partner.name : "User";
   };
 
@@ -267,7 +322,7 @@ function ChatWidget({ isOpen, onClose, initialConversationId = null, initialList
                 </div>
               ) : (
                 messages.map(msg => {
-                  const isSelf = msg.sender === user?._id || msg.sender?._id === user?._id;
+                  const isSelf = isSameId(msg.sender, user?._id);
                   const formattedTime = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                   return (

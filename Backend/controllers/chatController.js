@@ -150,18 +150,19 @@ async function sendMessage(req, res) {
 
     // Emit Socket.io event if io instance is available on req.app
     const io = req.app.get('io');
+    const messageJson = newMessage.toJSON();
     if (io) {
-      io.to(conversationId.toString()).emit('receive_message', newMessage);
+      io.to(conversationId.toString()).emit('receive_message', messageJson);
       io.to(`user_${receiverId.toString()}`).emit('new_message_notification', {
         conversationId,
         senderId,
-        message: newMessage
+        message: messageJson
       });
     }
 
     return res.status(201).json({
       success: true,
-      message: newMessage
+      message: messageJson
     });
   } catch (error) {
     console.error("Error in sendMessage:", error);
@@ -210,19 +211,22 @@ async function respondToOffer(req, res) {
       lastMessageTime: new Date()
     });
 
+    const offerJson = message.toJSON();
+    const responseJson = responseMsg.toJSON();
+
     const io = req.app.get('io');
     if (io) {
       io.to(message.conversationId.toString()).emit('offer_updated', {
         messageId,
         status,
-        responseMsg
+        responseMsg: responseJson
       });
     }
 
     return res.status(200).json({
       success: true,
-      offerMessage: message,
-      responseMessage: responseMsg
+      offerMessage: offerJson,
+      responseMessage: responseJson
     });
   } catch (error) {
     console.error("Error in respondToOffer:", error);
