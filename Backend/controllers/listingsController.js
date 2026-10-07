@@ -31,7 +31,10 @@ async function addNewListings(req, res) {
             city: user.city || "",
             area: user.area || "",
             pincode: user.pincode || "",
-            images: imagePaths
+            images: imagePaths,
+            status: 'Active',
+            views: 0,
+            contactClicks: 0
         });
 
         await newListing.save();
@@ -68,9 +71,14 @@ async function getListings(req, res) {
 async function getMarketplaceFeed(req, res) {
     try {
         const userID = req.user ? req.user.id : null;
-        const { q, category, locationScope, pincode, city } = req.query;
+        const { q, category, locationScope, pincode, city, includeSold } = req.query;
 
         let query = {};
+
+        // By default, exclude sold items unless explicitly requested
+        if (!includeSold || includeSold !== 'true') {
+            query.status = { $ne: 'Sold' };
+        }
 
         // Fetch user location if logged in
         let userPincode = pincode;
@@ -129,7 +137,13 @@ async function getMarketplaceFeed(req, res) {
 async function getListingDetails(req, res) {
     try {
         const { id } = req.params;
-        const listing = await Listings.findById(id);
+        
+        // Increment view counter
+        const listing = await Listings.findByIdAndUpdate(
+            id,
+            { $inc: { views: 1 } },
+            { new: true }
+        );
 
         if (!listing) {
             return res.status(404).json({ success: false, message: "Listing not found!" });
@@ -164,6 +178,57 @@ async function getListingDetails(req, res) {
     } catch (error) {
         console.error("Error fetching listing details:", error);
         return res.status(500).json({ success: false, message: "Failed to fetch listing details" });
+    }
+}
+
+async function trackContactClick(req, res) {
+    try {
+        const { id } = req.params;
+        const updated = await Listings.findByIdAndUpdate(
+            id,
+            { $inc: { contactClicks: 1 } },
+            { new: true }
+        );
+        if (!updated) {
+            return res.status(404).json({ success: false, message: "Listing not found" });
+        }
+        return res.status(200).json({ success: true, contactClicks: updated.contactClicks });
+    } catch (error) {
+        console.error("Error tracking contact click:", error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+}
+
+async function updateListingStatus(req, res) {
+    try {
+        const userID = req.user.id;
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!['Active', 'Reserved', 'Sold'].includes(status)) {
+            return res.status(400).json({ success: false, message: "Invalid status value. Must be Active, Reserved, or Sold" });
+        }
+
+        const listing = await Listings.findById(id);
+        if (!listing) {
+            return res.status(404).json({ success: false, message: "Listing not found!" });
+        }
+
+        if (listing.relatedUser.toString() !== userID.toString()) {
+            return res.status(403).json({ success: false, message: "Unauthorized to update status for this listing" });
+        }
+
+        listing.status = status;
+        await listing.save();
+
+        return res.status(200).json({
+            success: true,
+            message: `Listing status updated to ${status}!`,
+            listing
+        });
+    } catch (error) {
+        console.error("Error updating listing status:", error);
+        return res.status(500).json({ success: false, message: "Failed to update listing status" });
     }
 }
 
@@ -242,6 +307,8 @@ module.exports = {
     getListings,
     getMarketplaceFeed,
     getListingDetails,
+    trackContactClick,
+    updateListingStatus,
     updateListing,
     deleteListing
 };

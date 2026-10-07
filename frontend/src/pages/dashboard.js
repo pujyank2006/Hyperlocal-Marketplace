@@ -191,6 +191,23 @@ function Dashboard() {
               >
                 <div className={styles.cardImgWrapper}>
                   <span className={styles.badgeCategory}>{item.category}</span>
+                  {item.status && item.status !== 'Active' && (
+                    <span style={{
+                      position: 'absolute',
+                      bottom: '8px',
+                      left: '8px',
+                      background: item.status === 'Reserved' ? '#d97706' : '#dc2626',
+                      color: '#ffffff',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      fontWeight: '800',
+                      zIndex: 2,
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }}>
+                      {item.status === 'Reserved' ? '🟡 PENDING' : '🔴 SOLD'}
+                    </span>
+                  )}
                   <img
                     src={
                       item.images && item.images.length > 0
@@ -340,7 +357,12 @@ function Dashboard() {
                   <button
                     className={styles.viewBtn}
                     style={{ marginTop: '8px', width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: '700', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' }}
-                    onClick={() => setShowContact(true)}
+                    onClick={() => {
+                      setShowContact(true);
+                      if (selectedItem?._id) {
+                        listingService.trackContactClick(selectedItem._id).catch(err => console.error(err));
+                      }
+                    }}
                   >
                     📞 Click to View Seller Contact Details
                   </button>

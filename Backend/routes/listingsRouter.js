@@ -3,7 +3,16 @@ const router = express.Router();
 
 const { verifyToken } = require('../middlewares/authMiddleware');
 const upload = require('../middlewares/uploadMiddleware');
-const { addNewListings, getListings, getMarketplaceFeed, getListingDetails, updateListing, deleteListing } = require('../controllers/listingsController');
+const {
+  addNewListings,
+  getListings,
+  getMarketplaceFeed,
+  getListingDetails,
+  trackContactClick,
+  updateListingStatus,
+  updateListing,
+  deleteListing
+} = require('../controllers/listingsController');
 
 // Require authentication for listing routes
 router.use(verifyToken);
@@ -17,6 +26,9 @@ router.get("/get-listing", getListings);
 router.get("/detail/:id", getListingDetails);
 router.get("/:id", getListingDetails);
 router.get("/", getListings);
+
+router.post("/:id/track-contact", trackContactClick);
+router.patch("/:id/status", updateListingStatus);
 
 router.put("/:id", upload.array('images', 10), updateListing);
 router.patch("/:id", upload.array('images', 10), updateListing);

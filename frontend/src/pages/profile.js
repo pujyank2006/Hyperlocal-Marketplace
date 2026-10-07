@@ -115,6 +115,21 @@ function Profile() {
     );
   };
 
+  const handleStatusChange = async (listingId, newStatus) => {
+    try {
+      const data = await listingService.updateListingStatus(listingId, newStatus);
+      if (data.success) {
+        handleSuccess(`Listing status updated to ${newStatus}!`);
+        setUserListings(prev =>
+          prev.map(item => (item._id === listingId ? { ...item, status: newStatus } : item))
+        );
+      }
+    } catch (err) {
+      console.error("Error updating status:", err);
+      handleError(err.message || "Could not update status");
+    }
+  };
+
   const handleDeleteListing = async (listingId) => {
     if (!window.confirm("Are you sure you want to delete this listing?")) {
       return;
@@ -313,6 +328,35 @@ function Profile() {
                     <div className={styles.cardTitle}>{item.title}</div>
                     <div className={styles.cardPrice}>₹{item.price}</div>
                     <div className={styles.cardLoc}>📍 {item.area || item.city || "Local"}</div>
+
+                    {/* Status Dropdown */}
+                    <div style={{ margin: '8px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                      <span style={{ fontWeight: '600', color: '#64748b' }}>Status:</span>
+                      <select
+                        value={item.status || 'Active'}
+                        onChange={(e) => handleStatusChange(item._id, e.target.value)}
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          fontWeight: '700',
+                          fontSize: '0.8rem',
+                          background: item.status === 'Sold' ? '#fee2e2' : item.status === 'Reserved' ? '#fef3c7' : '#dcfce7',
+                          color: item.status === 'Sold' ? '#991b1b' : item.status === 'Reserved' ? '#92400e' : '#166534',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="Active">🟢 Active</option>
+                        <option value="Reserved">🟡 Reserved</option>
+                        <option value="Sold">🔴 Sold</option>
+                      </select>
+                    </div>
+
+                    {/* Seller Analytics Bar */}
+                    <div style={{ display: 'flex', gap: '10px', background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', margin: '4px 0 10px 0', fontSize: '0.78rem', color: '#475569', fontWeight: '600' }}>
+                      <span>👁️ {item.views || 0} views</span>
+                      <span>📞 {item.contactClicks || 0} clicks</span>
+                    </div>
 
                     <div className={styles.cardActions}>
                       <button

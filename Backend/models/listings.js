@@ -41,6 +41,19 @@ const listingsSchema = new schema ({
     images: {
         type: [String],
         default: []
+    },
+    status: {
+        type: String,
+        enum: ['Active', 'Reserved', 'Sold'],
+        default: 'Active'
+    },
+    views: {
+        type: Number,
+        default: 0
+    },
+    contactClicks: {
+        type: Number,
+        default: 0
     }
 }, { timestamps: true });
 

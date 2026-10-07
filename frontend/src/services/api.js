@@ -58,6 +58,8 @@ export const listingService = {
   getListingDetails: (id) => request(`/listings/detail/${id}`, { method: 'GET' }),
   createListing: (formData) => request('/listings/create-listing', { method: 'POST', body: formData }),
   updateListing: (id, formData) => request(`/listings/${id}`, { method: 'PUT', body: formData }),
+  updateListingStatus: (id, status) => request(`/listings/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  trackContactClick: (id) => request(`/listings/${id}/track-contact`, { method: 'POST' }),
   deleteListing: (id) => request(`/listings/${id}`, { method: 'DELETE' }),
 };
 
