@@ -36,23 +36,26 @@ const CITY_COORDINATES = {
  * Derives deterministic latitude & longitude for a location (city, pincode, area)
  */
 function resolveCoordinates({ latitude, longitude, pincode, city, area, id }) {
-  if (latitude && longitude) {
+  if (
+    latitude !== undefined && latitude !== null && !isNaN(latitude) && Number(latitude) !== 0 &&
+    longitude !== undefined && longitude !== null && !isNaN(longitude) && Number(longitude) !== 0
+  ) {
     return { lat: Number(latitude), lng: Number(longitude) };
   }
 
   const cityKey = (city || '').trim().toLowerCase();
   const baseCoords = CITY_COORDINATES[cityKey] || { lat: 28.6139, lng: 77.2090 }; // Default to Delhi center
 
-  // Generate a deterministic jitter based on pincode/area string so items in the same city don't overlap on 1 pixel
-  let seedStr = (pincode || '') + (area || '') + (id ? id.toString() : '');
+  // Generate a deterministic offset based on pincode & area so items don't stack on top of each other
+  let seedStr = (pincode || '000000') + (area || '') + (id ? id.toString() : '');
   let hash = 0;
   for (let i = 0; i < seedStr.length; i++) {
     hash = (hash << 5) - hash + seedStr.charCodeAt(i);
     hash |= 0;
   }
 
-  const latOffset = ((hash % 100) / 1000) * 0.4;
-  const lngOffset = (((hash >> 2) % 100) / 1000) * 0.4;
+  const latOffset = (((hash % 100) - 50) / 10000) * 2;
+  const lngOffset = (((((hash >> 2) % 100)) - 50) / 10000) * 2;
 
   return {
     lat: Number((baseCoords.lat + latOffset).toFixed(6)),

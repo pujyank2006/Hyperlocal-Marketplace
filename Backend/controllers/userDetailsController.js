@@ -10,6 +10,13 @@ async function updateDetails(req, res) {
         const updateData = { ...req.body };
         delete updateData.password;
 
+        if (updateData.latitude !== undefined) {
+            updateData.latitude = updateData.latitude !== null && !isNaN(updateData.latitude) ? Number(updateData.latitude) : null;
+        }
+        if (updateData.longitude !== undefined) {
+            updateData.longitude = updateData.longitude !== null && !isNaN(updateData.longitude) ? Number(updateData.longitude) : null;
+        }
+
         const updatedUser = await User.findByIdAndUpdate(
             userID,
             updateData,
@@ -26,6 +33,8 @@ async function updateDetails(req, res) {
         if (updateData.city !== undefined) listingUpdate.city = updateData.city;
         if (updateData.pincode !== undefined) listingUpdate.pincode = updateData.pincode;
         if (updateData.name !== undefined) listingUpdate.owner = updateData.name;
+        if (updateData.latitude !== undefined) listingUpdate.latitude = updateData.latitude;
+        if (updateData.longitude !== undefined) listingUpdate.longitude = updateData.longitude;
 
         if (Object.keys(listingUpdate).length > 0) {
             await Listings.updateMany(

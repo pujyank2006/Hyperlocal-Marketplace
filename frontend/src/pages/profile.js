@@ -30,10 +30,13 @@ function Profile() {
     area: "",
     pincode: "",
     address: "",
+    latitude: null,
+    longitude: null
   });
 
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
   function handleChange(e, type) {
     const { name, value } = e.target;
@@ -44,9 +47,59 @@ function Profile() {
     }
   }
 
-  function validateInputs(obj) {
-    return Object.values(obj).every(field => field.trim() !== "");
+  function validatePersonal(obj) {
+    return Boolean(obj.name?.trim() && obj.email?.trim() && obj.phone?.trim());
   }
+
+  function validateAddress(obj) {
+    return Boolean(obj.area?.trim() && obj.pincode?.trim() && obj.address?.trim());
+  }
+
+  const handleDetectAddressLocation = () => {
+    if (!navigator.geolocation) {
+      return handleError("Geolocation is not supported by your browser");
+    }
+    setIsDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        setAddressDetails(prev => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng
+        }));
+
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+          const data = await res.json();
+          if (data && data.address) {
+            const addr = data.address;
+            setAddressDetails(prev => ({
+              ...prev,
+              latitude: lat,
+              longitude: lng,
+              area: addr.suburb || addr.neighbourhood || addr.residential || addr.road || prev.area,
+              pincode: addr.postcode || prev.pincode,
+              address: data.display_name || prev.address
+            }));
+          }
+        } catch (err) {
+          console.warn("Reverse geocode failed:", err);
+        } finally {
+          setIsDetectingLocation(false);
+          handleSuccess("📍 Precise GPS coordinates captured!");
+        }
+      },
+      (err) => {
+        console.warn("GPS Access Error:", err);
+        setIsDetectingLocation(false);
+        handleError("Location access denied or unavailable. Falling back to pincode-based map view.");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   async function updateUser(data) {
     try {
@@ -67,7 +120,7 @@ function Profile() {
 
   async function handlePersonalSubmit(e) {
     e.preventDefault();
-    if (!validateInputs(personalDetails)) {
+    if (!validatePersonal(personalDetails)) {
       return handleError("Please fill all personal details");
     }
     const success = await updateUser(personalDetails);
@@ -80,12 +133,12 @@ function Profile() {
 
   async function handleAddressSubmit(e) {
     e.preventDefault();
-    if (!validateInputs(addressDetails)) {
+    if (!validateAddress(addressDetails)) {
       return handleError("Please fill all address details");
     }
     const success = await updateUser(addressDetails);
     if (success) {
-      handleSuccess("Details updated successfully");
+      handleSuccess("Address & Listings location updated successfully");
       setIsEditingAddress(false);
       fetchUserListings();
     }
@@ -163,6 +216,8 @@ function Profile() {
             area: data.user.area || "",
             pincode: data.user.pincode || "",
             address: data.user.address || "",
+            latitude: data.user.latitude || null,
+            longitude: data.user.longitude || null
           });
         }
       })
@@ -237,6 +292,38 @@ function Profile() {
                 <div className={styles.editDetails}>
                   <h2>{user.address ? "Edit Address" : "Add Address"}</h2>
 
+                  <div style={{ margin: '10px 0' }}>
+                    <button
+                      type="button"
+                      style={{
+                        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '8px 14px',
+                        borderRadius: '8px',
+                        fontSize: '0.85rem',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                      onClick={handleDetectAddressLocation}
+                      disabled={isDetectingLocation}
+                    >
+                      {isDetectingLocation ? "⏳ Detecting GPS..." : "📍 Auto-Detect GPS Location"}
+                    </button>
+                    {addressDetails.latitude && addressDetails.longitude ? (
+                      <div style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: '600', marginTop: '4px' }}>
+                        ✅ GPS Captured: ({addressDetails.latitude.toFixed(4)}, {addressDetails.longitude.toFixed(4)})
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
+                        ℹ️ Map view will use exact GPS if available, else pincode center fallback.
+                      </div>
+                    )}
+                  </div>
+
                   <input
                     className={styles.inputSpaces}
                     type="text"
@@ -275,6 +362,15 @@ function Profile() {
                     <h1>{user.area}</h1>
                     <h2>Pincode: {user.pincode}</h2>
                     <p>{user.address}</p>
+                    {user.latitude && user.longitude ? (
+                      <span style={{ fontSize: '0.8rem', color: '#16a34a', fontWeight: '700', display: 'block', marginTop: '6px' }}>
+                        📍 Precise GPS Location Active
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginTop: '6px' }}>
+                        📍 Rough Pincode Map View Active
+                      </span>
+                    )}
                     <button className={styles.editButton} onClick={() => setIsEditingAddress(true)}>Edit</button>
                   </>
                 ) : (

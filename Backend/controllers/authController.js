@@ -6,7 +6,7 @@ const userDetails = require("../models/user");
 // Logical method to handle Signup
 async function handleSignup(req, res) {
     try {
-        const { name, email, phone, state, city, area, pincode, password, confirmPassword } = req.body;
+        const { name, email, phone, state, city, area, pincode, password, confirmPassword, latitude, longitude } = req.body;
 
         if (password !== confirmPassword) {
             return res.status(400).json({ success: false, error: "Password doesn't match!" });
@@ -17,7 +17,18 @@ async function handleSignup(req, res) {
             return res.status(409).json({ success: false, message: "User already exists!" });
         };
 
-        const presentUser = new userDetails({ name, email, phone, state, city, area, pincode, password });
+        const presentUser = new userDetails({
+            name,
+            email,
+            phone,
+            state,
+            city,
+            area,
+            pincode,
+            password,
+            latitude: latitude !== undefined && latitude !== null && !isNaN(latitude) ? Number(latitude) : null,
+            longitude: longitude !== undefined && longitude !== null && !isNaN(longitude) ? Number(longitude) : null
+        });
         presentUser.password = await bcrypt.hash(password, 10);
         await presentUser.save();
 

@@ -13,6 +13,7 @@ function SignupPage() {
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [signupInfo, setSignupInfo] = useState({
     name: '',
     email: '',
@@ -22,12 +23,60 @@ function SignupPage() {
     area: '',
     pincode: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    latitude: null,
+    longitude: null
   });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setSignupInfo(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      return handleError("Geolocation is not supported by your browser");
+    }
+    setIsDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setSignupInfo(prev => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng
+        }));
+
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+          const data = await res.json();
+          if (data && data.address) {
+            const addr = data.address;
+            setSignupInfo(prev => ({
+              ...prev,
+              latitude: lat,
+              longitude: lng,
+              state: addr.state || addr.region || prev.state,
+              city: addr.city || addr.town || addr.village || addr.county || prev.city,
+              area: addr.suburb || addr.neighbourhood || addr.residential || addr.road || prev.area,
+              pincode: addr.postcode || prev.pincode
+            }));
+          }
+        } catch (err) {
+          console.warn("Reverse geocode failed:", err);
+        } finally {
+          setIsDetectingLocation(false);
+          handleSuccess("📍 Precise GPS coordinates captured!");
+        }
+      },
+      (err) => {
+        console.warn("GPS Access Error:", err);
+        setIsDetectingLocation(false);
+        handleError("Location access denied or unavailable. Falling back to pincode-based map view.");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   const nextStep = () => {
@@ -135,6 +184,39 @@ function SignupPage() {
         {currentStep === 2 && (
           <>
             <h1>Almost there!!</h1>
+
+            <div style={{ marginBottom: '16px' }}>
+              <button
+                type="button"
+                style={{
+                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  fontSize: '0.88rem',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                onClick={handleDetectLocation}
+                disabled={isDetectingLocation}
+              >
+                {isDetectingLocation ? "⏳ Detecting GPS Location..." : "📍 Use My Current Location (GPS)"}
+              </button>
+              {signupInfo.latitude && signupInfo.longitude ? (
+                <div style={{ fontSize: '0.8rem', color: '#16a34a', fontWeight: '600', marginTop: '6px' }}>
+                  ✅ GPS Captured: ({signupInfo.latitude.toFixed(4)}, {signupInfo.longitude.toFixed(4)})
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '4px' }}>
+                  ℹ️ If location access is denied, map view will fall back to pincode center.
+                </div>
+              )}
+            </div>
+
             <ul className={styles.list}>
               <li>
                 <div className={styles.eachList}>
