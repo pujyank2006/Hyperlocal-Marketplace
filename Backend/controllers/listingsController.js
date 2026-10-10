@@ -1,5 +1,6 @@
 const Listings = require('../models/listings');
 const User = require('../models/user');
+const { resolveCoordinates, calculateDistanceKm } = require('../utils/geoUtils');
 
 async function addNewListings(req, res) {
     try {
@@ -20,6 +21,13 @@ async function addNewListings(req, res) {
         }
 
         const imagePaths = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
+        const coords = resolveCoordinates({
+            latitude: user.latitude,
+            longitude: user.longitude,
+            pincode: user.pincode,
+            city: user.city,
+            area: user.area
+        });
 
         const newListing = new Listings({
             relatedUser: userID,
@@ -34,7 +42,9 @@ async function addNewListings(req, res) {
             images: imagePaths,
             status: 'Active',
             views: 0,
-            contactClicks: 0
+            contactClicks: 0,
+            latitude: coords.lat,
+            longitude: coords.lng
         });
 
         await newListing.save();
@@ -71,7 +81,7 @@ async function getListings(req, res) {
 async function getMarketplaceFeed(req, res) {
     try {
         const userID = req.user ? req.user.id : null;
-        const { q, category, locationScope, pincode, city, includeSold } = req.query;
+        const { q, category, locationScope, pincode, city, includeSold, maxDistance } = req.query;
 
         let query = {};
 
@@ -83,14 +93,23 @@ async function getMarketplaceFeed(req, res) {
         // Fetch user location if logged in
         let userPincode = pincode;
         let userCity = city;
+        let currentUser = null;
 
-        if (userID && (!userPincode || !userCity)) {
-            const currentUser = await User.findById(userID);
+        if (userID) {
+            currentUser = await User.findById(userID);
             if (currentUser) {
                 userPincode = userPincode || currentUser.pincode;
                 userCity = userCity || currentUser.city;
             }
         }
+
+        const userCoords = resolveCoordinates({
+            latitude: currentUser?.latitude,
+            longitude: currentUser?.longitude,
+            pincode: userPincode,
+            city: userCity,
+            area: currentUser?.area
+        });
 
         // Location Scope Filter: 'pincode', 'city', or 'all'
         if (locationScope === 'pincode' && userPincode) {
@@ -117,16 +136,52 @@ async function getMarketplaceFeed(req, res) {
             ];
         }
 
-        const listings = await Listings.find(query).sort({ createdAt: -1 });
+        let listings = await Listings.find(query).sort({ createdAt: -1 });
+
+        // Enrich listings with coordinates and calculate distance from user
+        const enrichedListings = listings.map(item => {
+            const itemObj = item.toObject();
+            const itemCoords = resolveCoordinates({
+                latitude: itemObj.latitude,
+                longitude: itemObj.longitude,
+                pincode: itemObj.pincode,
+                city: itemObj.city,
+                area: itemObj.area,
+                id: itemObj._id
+            });
+
+            const distanceKm = calculateDistanceKm(
+                userCoords.lat,
+                userCoords.lng,
+                itemCoords.lat,
+                itemCoords.lng
+            );
+
+            return {
+                ...itemObj,
+                latitude: itemCoords.lat,
+                longitude: itemCoords.lng,
+                distanceKm
+            };
+        });
+
+        // Filter by maxDistance radius if provided
+        let finalFeed = enrichedListings;
+        if (maxDistance && !isNaN(maxDistance) && Number(maxDistance) > 0) {
+            const limitKm = Number(maxDistance);
+            finalFeed = enrichedListings.filter(item => item.distanceKm !== null && item.distanceKm <= limitKm);
+        }
 
         return res.status(200).json({
             success: true,
-            count: listings.length,
+            count: finalFeed.length,
             userLocation: {
                 pincode: userPincode || "",
-                city: userCity || ""
+                city: userCity || "",
+                latitude: userCoords.lat,
+                longitude: userCoords.lng
             },
-            listings
+            listings: finalFeed
         });
     } catch (error) {
         console.error("Error fetching feed:", error);

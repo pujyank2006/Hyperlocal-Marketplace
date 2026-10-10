@@ -54,6 +54,14 @@ const listingsSchema = new schema ({
     contactClicks: {
         type: Number,
         default: 0
+    },
+    latitude: {
+        type: Number,
+        default: null
+    },
+    longitude: {
+        type: Number,
+        default: null
     }
 }, { timestamps: true });
 

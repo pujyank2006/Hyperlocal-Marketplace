@@ -39,6 +39,14 @@ const userSchema = new schema({
         type: String,
         required: false,
     },
+    latitude: {
+        type: Number,
+        default: null
+    },
+    longitude: {
+        type: Number,
+        default: null
+    }
 }, { timestamps: true });
 
 const userDetails = mongoose.model('user', userSchema);

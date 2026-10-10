@@ -4,6 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import styles from "../styles/dashboard.module.css";
 import Navbar from '../Components/Navbar';
 import ChatWidget from '../Components/ChatWidget';
+import MapView from '../Components/MapView';
 import { SkeletonGrid } from '../Components/SkeletonLoader';
 import { listingService } from '../services/api';
 import { handleError } from '../utils';
@@ -22,13 +23,15 @@ const CATEGORIES = [
 
 function Dashboard() {
   const [listings, setListings] = useState([]);
-  const [userLocation, setUserLocation] = useState({ pincode: '', city: '' });
+  const [userLocation, setUserLocation] = useState({ pincode: '', city: '', latitude: null, longitude: null });
   const [isLoading, setIsLoading] = useState(true);
 
   // Filters State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [locationScope, setLocationScope] = useState('pincode'); // 'pincode', 'city', 'all'
+  const [maxDistance, setMaxDistance] = useState(''); // Distance radius filter in km ('', '5', '10', '25', '50')
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'map'
 
   // Selected item & Image Gallery Carousel state
   const [selectedItem, setSelectedItem] = useState(null);
@@ -46,6 +49,7 @@ function Dashboard() {
       if (searchQuery.trim()) params.q = searchQuery.trim();
       if (selectedCategory !== 'All') params.category = selectedCategory;
       if (locationScope) params.locationScope = locationScope;
+      if (maxDistance) params.maxDistance = maxDistance;
 
       const data = await listingService.getFeed(params);
       if (data.success) {
@@ -62,7 +66,7 @@ function Dashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, selectedCategory, locationScope]);
+  }, [searchQuery, selectedCategory, locationScope, maxDistance]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -111,7 +115,7 @@ function Dashboard() {
       {/* BODY */}
       <div className={styles.container}>
         
-        {/* CONTROLS BAR: SEARCH & SCOPE */}
+        {/* CONTROLS BAR: SEARCH, SCOPE & RADIUS FILTER */}
         <div className={styles.controlsBar}>
           <div className={styles.searchBox}>
             <span className={styles.searchIcon}>🔍</span>
@@ -143,6 +147,21 @@ function Dashboard() {
             >
               🌐 All Locations
             </button>
+
+            {/* RADIUS FILTER DROPDOWN */}
+            <select
+              className={styles.scopeBtn}
+              value={maxDistance}
+              onChange={(e) => setMaxDistance(e.target.value)}
+              style={{ background: maxDistance ? '#0284c7' : '#ffffff', color: maxDistance ? '#ffffff' : '#334155', fontWeight: '700', cursor: 'pointer' }}
+              title="Filter by distance radius"
+            >
+              <option value="" style={{ background: '#ffffff', color: '#0f172a' }}>📏 Radius: All</option>
+              <option value="5" style={{ background: '#ffffff', color: '#0f172a' }}>📏 Within 5 km</option>
+              <option value="10" style={{ background: '#ffffff', color: '#0f172a' }}>📏 Within 10 km</option>
+              <option value="25" style={{ background: '#ffffff', color: '#0f172a' }}>📏 Within 25 km</option>
+              <option value="50" style={{ background: '#ffffff', color: '#0f172a' }}>📏 Within 50 km</option>
+            </select>
           </div>
         </div>
 
@@ -159,17 +178,38 @@ function Dashboard() {
           ))}
         </div>
 
-        {/* META HEADER */}
-        <div className={styles.metaBanner}>
-          <h3>
-            {locationScope === 'pincode' && `Items in Pincode ${userLocation.pincode || ''}`}
-            {locationScope === 'city' && `Items in City ${userLocation.city || ''}`}
-            {locationScope === 'all' && `All Hyperlocal Marketplace Listings`}
-          </h3>
-          <span className={styles.countTag}>{listings.length} item{listings.length === 1 ? '' : 's'} found</span>
+        {/* META HEADER WITH VIEW MODE TOGGLE */}
+        <div className={styles.metaBanner} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ margin: 0 }}>
+              {locationScope === 'pincode' && `Items in Pincode ${userLocation.pincode || ''}`}
+              {locationScope === 'city' && `Items in City ${userLocation.city || ''}`}
+              {locationScope === 'all' && `All Hyperlocal Marketplace Listings`}
+              {maxDistance && ` (Within ${maxDistance} km)`}
+            </h3>
+            <span className={styles.countTag}>{listings.length} item{listings.length === 1 ? '' : 's'} found</span>
+          </div>
+
+          {/* VIEW MODE TOGGLE SWITCH */}
+          <div style={{ display: 'flex', gap: '6px', background: '#f1f5f9', padding: '4px', borderRadius: '10px', border: '1px solid #cbd5e1' }}>
+            <button
+              className={styles.scopeBtn}
+              style={{ padding: '6px 12px', borderRadius: '8px', border: 'none', background: viewMode === 'grid' ? '#0284c7' : 'transparent', color: viewMode === 'grid' ? '#ffffff' : '#475569', fontWeight: '700' }}
+              onClick={() => setViewMode('grid')}
+            >
+              📱 Grid View
+            </button>
+            <button
+              className={styles.scopeBtn}
+              style={{ padding: '6px 12px', borderRadius: '8px', border: 'none', background: viewMode === 'map' ? '#0284c7' : 'transparent', color: viewMode === 'map' ? '#ffffff' : '#475569', fontWeight: '700' }}
+              onClick={() => setViewMode('map')}
+            >
+              🗺️ Map View
+            </button>
+          </div>
         </div>
 
-        {/* FEED GRID */}
+        {/* FEED GRID OR MAP VIEW */}
         {isLoading ? (
           <div className={styles.feedGrid}>
             <SkeletonGrid count={6} />
@@ -178,9 +218,15 @@ function Dashboard() {
           <div className={styles.emptyState}>
             <h2>🛍️ No listings found</h2>
             <p style={{ marginTop: '8px' }}>
-              Try searching with different keywords, switching to <strong>My City</strong> or <strong>All Locations</strong>, or clearing category filters.
+              Try searching with different keywords, switching to <strong>My City</strong> or <strong>All Locations</strong>, expanding distance radius, or clearing category filters.
             </p>
           </div>
+        ) : viewMode === 'map' ? (
+          <MapView
+            listings={listings}
+            userLocation={userLocation}
+            onItemClick={handleOpenItem}
+          />
         ) : (
           <div className={styles.feedGrid}>
             {listings.map(item => (
@@ -227,6 +273,11 @@ function Dashboard() {
                   <div className={styles.itemPrice}>₹{item.price}</div>
                   <div className={styles.itemLocation}>
                     📍 {item.area ? `${item.area}, ` : ''}{item.city} ({item.pincode})
+                    {item.distanceKm !== undefined && item.distanceKm !== null && (
+                      <span style={{ display: 'block', color: '#166534', fontWeight: '700', fontSize: '0.8rem', marginTop: '2px' }}>
+                        📏 {item.distanceKm} km away
+                      </span>
+                    )}
                   </div>
                   <div className={styles.cardFooter}>
                     <span className={styles.sellerName}>Seller: {item.owner}</span>
@@ -314,9 +365,14 @@ function Dashboard() {
               </div>
 
               <div>
-                <strong style={{ color: '#0f172a' }}>Location:</strong>
+                <strong style={{ color: '#0f172a' }}>Location & Proximity:</strong>
                 <p style={{ color: '#475569', marginTop: '4px' }}>
                   📍 {selectedItem.area ? `${selectedItem.area}, ` : ''}{selectedItem.city} (Pincode: {selectedItem.pincode})
+                  {selectedItem.distanceKm !== undefined && selectedItem.distanceKm !== null && (
+                    <span style={{ display: 'inline-block', marginLeft: '8px', color: '#166534', fontWeight: '700', background: '#dcfce7', padding: '2px 8px', borderRadius: '6px', fontSize: '0.82rem' }}>
+                      📏 {selectedItem.distanceKm} km away from you
+                    </span>
+                  )}
                 </p>
               </div>
 
