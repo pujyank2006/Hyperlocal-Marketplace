@@ -71,3 +71,26 @@ export const chatService = {
   sendMessage: (conversationId, text, offerPrice) => request('/chat/message', { method: 'POST', body: JSON.stringify({ conversationId, text, offerPrice }) }),
   respondOffer: (messageId, status) => request(`/chat/offer/${messageId}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 };
+
+// Wishlist Services
+export const wishlistService = {
+  toggle: (listingId) => request(`/wishlist/toggle/${listingId}`, { method: 'POST' }),
+  getWishlist: () => request('/wishlist', { method: 'GET' }),
+  getWishlistIds: () => request('/wishlist/ids', { method: 'GET' }),
+};
+
+// Saved Search & Alert Services
+export const savedSearchService = {
+  saveSearch: (data) => request('/saved-searches', { method: 'POST', body: JSON.stringify(data) }),
+  getSavedSearches: () => request('/saved-searches', { method: 'GET' }),
+  deleteSavedSearch: (id) => request(`/saved-searches/${id}`, { method: 'DELETE' }),
+};
+
+// Notification Services
+export const notificationService = {
+  getNotifications: () => request('/notifications', { method: 'GET' }),
+  getUnreadCount: () => request('/notifications/unread-count', { method: 'GET' }),
+  markAsRead: (id) => request(`/notifications/${id}/read`, { method: 'PATCH' }),
+  markAllAsRead: () => request('/notifications/read-all', { method: 'PATCH' }),
+};
+

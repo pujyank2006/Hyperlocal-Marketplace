@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 
 import styles from "../styles/profile.module.css";
@@ -8,14 +9,23 @@ import CreateListing from '../Components/createListing';
 import EditListing from '../Components/editListing';
 import { SkeletonGrid } from '../Components/SkeletonLoader';
 import { useAuth } from '../context/AuthContext';
-import { userService, listingService } from '../services/api';
+import { userService, listingService, wishlistService, savedSearchService } from '../services/api';
 import { handleError, handleSuccess } from '../utils';
 
 function Profile() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { updateUserState } = useAuth();
   const [user, setUser] = useState(null);
   const [userListings, setUserListings] = useState([]);
   const [isLoadingListings, setIsLoadingListings] = useState(true);
+
+  // Tabs state: 'listings', 'wishlist', 'alerts'
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'listings');
+  const [wishlist, setWishlist] = useState([]);
+  const [isLoadingWishlist, setIsLoadingWishlist] = useState(false);
+  const [savedSearches, setSavedSearches] = useState([]);
+  const [isLoadingAlerts, setIsLoadingAlerts] = useState(false);
 
   // Edit Modal State
   const [editingListing, setEditingListing] = useState(null);
@@ -202,6 +212,85 @@ function Profile() {
     }
   };
 
+  const fetchWishlist = useCallback(async () => {
+    try {
+      setIsLoadingWishlist(true);
+      const data = await wishlistService.getWishlist();
+      if (data.success) {
+        setWishlist(data.wishlist || []);
+      }
+    } catch (err) {
+      console.error("Error fetching wishlist:", err);
+    } finally {
+      setIsLoadingWishlist(false);
+    }
+  }, []);
+
+  const fetchSavedSearches = useCallback(async () => {
+    try {
+      setIsLoadingAlerts(true);
+      const data = await savedSearchService.getSavedSearches();
+      if (data.success) {
+        setSavedSearches(data.savedSearches || []);
+      }
+    } catch (err) {
+      console.error("Error fetching saved searches:", err);
+    } finally {
+      setIsLoadingAlerts(false);
+    }
+  }, []);
+
+  const handleRemoveWishlist = async (listingId) => {
+    try {
+      setWishlist(prev => prev.filter(item => item._id !== listingId));
+      await wishlistService.toggle(listingId);
+      handleSuccess("Item removed from wishlist");
+    } catch (err) {
+      console.error("Error removing from wishlist:", err);
+      fetchWishlist();
+    }
+  };
+
+  const handleDeleteSavedSearch = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this search alert?")) return;
+    try {
+      setSavedSearches(prev => prev.filter(item => item._id !== id));
+      const res = await savedSearchService.deleteSavedSearch(id);
+      if (res.success) {
+        handleSuccess("Search alert deleted");
+      }
+    } catch (err) {
+      console.error("Error deleting saved search:", err);
+      handleError("Could not delete search alert");
+      fetchSavedSearches();
+    }
+  };
+
+  const handleApplySavedSearch = (alert) => {
+    const params = new URLSearchParams();
+    if (alert.query) params.set('q', alert.query);
+    if (alert.category && alert.category !== 'All') params.set('category', alert.category);
+    if (alert.locationScope) params.set('scope', alert.locationScope);
+    navigate(`/dashboard?${params.toString()}`);
+  };
+
+  // Sync tab with URL searchParams
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['listings', 'wishlist', 'alerts'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  // Load appropriate data when tab changes
+  useEffect(() => {
+    if (activeTab === 'wishlist') {
+      fetchWishlist();
+    } else if (activeTab === 'alerts') {
+      fetchSavedSearches();
+    }
+  }, [activeTab, fetchWishlist, fetchSavedSearches]);
+
   useEffect(() => {
     userService.getProfile()
       .then(data => {
@@ -384,94 +473,253 @@ function Profile() {
           </div>
         </div>
 
-        {/* LISTINGS SECTION */}
+        {/* TABS & CONTENT SECTION */}
         <div className={styles.listings}>
-          <div className={styles.listingsHeader}>
-            <h2>My Active Listings ({userListings.length})</h2>
-            <CreateListing onListingCreated={handleListingCreated} />
+          {/* TAB SWITCHER */}
+          <div className={styles.tabsContainer}>
+            <button
+              className={`${styles.tabBtn} ${activeTab === 'listings' ? styles.tabBtnActive : ''}`}
+              onClick={() => { setActiveTab('listings'); setSearchParams({ tab: 'listings' }); }}
+            >
+              🛍️ My Listings ({userListings.length})
+            </button>
+            <button
+              className={`${styles.tabBtn} ${activeTab === 'wishlist' ? styles.tabBtnActive : ''}`}
+              onClick={() => { setActiveTab('wishlist'); setSearchParams({ tab: 'wishlist' }); }}
+            >
+              ❤️ Wishlist ({wishlist.length})
+            </button>
+            <button
+              className={`${styles.tabBtn} ${activeTab === 'alerts' ? styles.tabBtnActive : ''}`}
+              onClick={() => { setActiveTab('alerts'); setSearchParams({ tab: 'alerts' }); }}
+            >
+              🔔 Search Alerts ({savedSearches.length})
+            </button>
           </div>
 
-          {isLoadingListings ? (
-            <div className={styles.listingsGrid}>
-              <SkeletonGrid count={4} />
-            </div>
-          ) : userListings.length === 0 ? (
-            <div className={styles.emptyState}>
-              <p>🛍️ You haven't posted any listings yet.</p>
-              <p style={{ fontSize: "0.9rem", color: "#94a3b8", marginTop: "6px" }}>
-                Click <strong>+ Post New Listing</strong> above to start selling to your local community!
-              </p>
-            </div>
-          ) : (
-            <div className={styles.listingsGrid}>
-              {userListings.map(item => (
-                <div key={item._id} className={styles.listingCard}>
-                  <img
-                    src={
-                      item.images && item.images.length > 0
-                        ? `http://localhost:9000${item.images[0]}`
-                        : "https://via.placeholder.com/220x140?text=No+Image"
-                    }
-                    alt={item.title}
-                    className={styles.cardImg}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = "https://via.placeholder.com/220x140?text=No+Image";
-                    }}
-                  />
-                  <div className={styles.cardBody}>
-                    <span className={styles.cardCategory}>{item.category}</span>
-                    <div className={styles.cardTitle}>{item.title}</div>
-                    <div className={styles.cardPrice}>₹{item.price}</div>
-                    <div className={styles.cardLoc}>📍 {item.area || item.city || "Local"}</div>
+          {/* TAB 1: MY ACTIVE LISTINGS */}
+          {activeTab === 'listings' && (
+            <>
+              <div className={styles.listingsHeader}>
+                <h2>My Active Listings ({userListings.length})</h2>
+                <CreateListing onListingCreated={handleListingCreated} />
+              </div>
 
-                    {/* Status Dropdown */}
-                    <div style={{ margin: '8px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                      <span style={{ fontWeight: '600', color: '#64748b' }}>Status:</span>
-                      <select
-                        value={item.status || 'Active'}
-                        onChange={(e) => handleStatusChange(item._id, e.target.value)}
-                        style={{
-                          padding: '4px 8px',
-                          borderRadius: '6px',
-                          border: '1px solid #cbd5e1',
-                          fontWeight: '700',
-                          fontSize: '0.8rem',
-                          background: item.status === 'Sold' ? '#fee2e2' : item.status === 'Reserved' ? '#fef3c7' : '#dcfce7',
-                          color: item.status === 'Sold' ? '#991b1b' : item.status === 'Reserved' ? '#92400e' : '#166534',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <option value="Active">🟢 Active</option>
-                        <option value="Reserved">🟡 Reserved</option>
-                        <option value="Sold">🔴 Sold</option>
-                      </select>
-                    </div>
-
-                    {/* Seller Analytics Bar */}
-                    <div style={{ display: 'flex', gap: '10px', background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', margin: '4px 0 10px 0', fontSize: '0.78rem', color: '#475569', fontWeight: '600' }}>
-                      <span>👁️ {item.views || 0} views</span>
-                      <span>📞 {item.contactClicks || 0} clicks</span>
-                    </div>
-
-                    <div className={styles.cardActions}>
-                      <button
-                        className={styles.editCardBtn}
-                        onClick={() => setEditingListing(item)}
-                      >
-                        ✏️ Edit
-                      </button>
-                      <button
-                        className={styles.deleteCardBtn}
-                        onClick={() => handleDeleteListing(item._id)}
-                      >
-                        🗑️ Delete
-                      </button>
-                    </div>
-                  </div>
+              {isLoadingListings ? (
+                <div className={styles.listingsGrid}>
+                  <SkeletonGrid count={4} />
                 </div>
-              ))}
-            </div>
+              ) : userListings.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <p>🛍️ You haven't posted any listings yet.</p>
+                  <p style={{ fontSize: "0.9rem", color: "#94a3b8", marginTop: "6px" }}>
+                    Click <strong>+ Post New Listing</strong> above to start selling to your local community!
+                  </p>
+                </div>
+              ) : (
+                <div className={styles.listingsGrid}>
+                  {userListings.map(item => (
+                    <div key={item._id} className={styles.listingCard}>
+                      <img
+                        src={
+                          item.images && item.images.length > 0
+                            ? `http://localhost:9000${item.images[0]}`
+                            : "https://via.placeholder.com/220x140?text=No+Image"
+                        }
+                        alt={item.title}
+                        className={styles.cardImg}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "https://via.placeholder.com/220x140?text=No+Image";
+                        }}
+                      />
+                      <div className={styles.cardBody}>
+                        <span className={styles.cardCategory}>{item.category}</span>
+                        <div className={styles.cardTitle}>{item.title}</div>
+                        <div className={styles.cardPrice}>₹{item.price}</div>
+                        <div className={styles.cardLoc}>📍 {item.area || item.city || "Local"}</div>
+
+                        {/* Status Dropdown */}
+                        <div style={{ margin: '8px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                          <span style={{ fontWeight: '600', color: '#64748b' }}>Status:</span>
+                          <select
+                            value={item.status || 'Active'}
+                            onChange={(e) => handleStatusChange(item._id, e.target.value)}
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              border: '1px solid #cbd5e1',
+                              fontWeight: '700',
+                              fontSize: '0.8rem',
+                              background: item.status === 'Sold' ? '#fee2e2' : item.status === 'Reserved' ? '#fef3c7' : '#dcfce7',
+                              color: item.status === 'Sold' ? '#991b1b' : item.status === 'Reserved' ? '#92400e' : '#166534',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <option value="Active">🟢 Active</option>
+                            <option value="Reserved">🟡 Reserved</option>
+                            <option value="Sold">🔴 Sold</option>
+                          </select>
+                        </div>
+
+                        {/* Seller Analytics Bar with Wishlists */}
+                        <div style={{ display: 'flex', gap: '8px', background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', margin: '4px 0 10px 0', fontSize: '0.78rem', color: '#475569', fontWeight: '600' }}>
+                          <span>👁️ {item.views || 0}</span>
+                          <span>📞 {item.contactClicks || 0}</span>
+                          <span>❤️ {item.wishlistCount || 0} saves</span>
+                        </div>
+
+                        <div className={styles.cardActions}>
+                          <button
+                            className={styles.editCardBtn}
+                            onClick={() => setEditingListing(item)}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            className={styles.deleteCardBtn}
+                            onClick={() => handleDeleteListing(item._id)}
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* TAB 2: WISHLIST & SAVED ITEMS */}
+          {activeTab === 'wishlist' && (
+            <>
+              <div className={styles.listingsHeader}>
+                <h2>❤️ My Wishlist ({wishlist.length})</h2>
+              </div>
+
+              {isLoadingWishlist ? (
+                <div className={styles.listingsGrid}>
+                  <SkeletonGrid count={4} />
+                </div>
+              ) : wishlist.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <p>🤍 You haven't saved any listings yet.</p>
+                  <p style={{ fontSize: "0.9rem", color: "#94a3b8", marginTop: "6px" }}>
+                    Browse items on the marketplace and tap the <strong>❤️ Heart</strong> icon on any card to save it here!
+                  </p>
+                </div>
+              ) : (
+                <div className={styles.listingsGrid}>
+                  {wishlist.map(item => (
+                    <div key={item._id} className={styles.listingCard}>
+                      <img
+                        src={
+                          item.images && item.images.length > 0
+                            ? `http://localhost:9000${item.images[0]}`
+                            : "https://via.placeholder.com/220x140?text=No+Image"
+                        }
+                        alt={item.title}
+                        className={styles.cardImg}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "https://via.placeholder.com/220x140?text=No+Image";
+                        }}
+                      />
+                      <div className={styles.cardBody}>
+                        <span className={styles.cardCategory}>{item.category}</span>
+                        <div className={styles.cardTitle}>{item.title}</div>
+                        <div className={styles.cardPrice}>₹{item.price}</div>
+                        <div className={styles.cardLoc}>
+                          📍 {item.area || item.city || "Local"}
+                          {item.distanceKm !== undefined && item.distanceKm !== null && (
+                            <span style={{ display: 'block', color: '#166534', fontWeight: '700', fontSize: '0.78rem' }}>
+                              📏 {item.distanceKm} km away
+                            </span>
+                          )}
+                        </div>
+
+                        <div className={styles.cardActions} style={{ marginTop: 'auto' }}>
+                          <button
+                            className={styles.editCardBtn}
+                            onClick={() => navigate('/dashboard')}
+                          >
+                            🔍 View in Market
+                          </button>
+                          <button
+                            className={styles.deleteCardBtn}
+                            onClick={() => handleRemoveWishlist(item._id)}
+                            title="Remove from saved wishlist"
+                          >
+                            ❌ Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* TAB 3: SAVED SEARCH ALERTS */}
+          {activeTab === 'alerts' && (
+            <>
+              <div className={styles.listingsHeader}>
+                <h2>🔔 Saved Search Alerts ({savedSearches.length})</h2>
+              </div>
+
+              {isLoadingAlerts ? (
+                <p style={{ padding: '20px', color: '#64748b' }}>Loading your search alerts...</p>
+              ) : savedSearches.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <p>🔔 No active search alerts.</p>
+                  <p style={{ fontSize: "0.9rem", color: "#94a3b8", marginTop: "6px" }}>
+                    Go to the Marketplace, choose your desired category or search keyword, and click <strong>"🔔 Save Alert"</strong> to get notified when new matching items are posted!
+                  </p>
+                </div>
+              ) : (
+                <div className={styles.alertsList}>
+                  {savedSearches.map(alert => (
+                    <div key={alert._id} className={styles.alertCard}>
+                      <div className={styles.alertInfo}>
+                        <div className={styles.alertTitle}>
+                          🔔 {alert.title}
+                        </div>
+                        <div className={styles.alertCriteria}>
+                          <span className={styles.criteriaTag}>📁 Category: {alert.category}</span>
+                          {alert.query && <span className={styles.criteriaTag}>🔍 Keyword: "{alert.query}"</span>}
+                          <span className={styles.criteriaTag}>
+                            📍 Scope: {alert.locationScope === 'pincode' ? `Pincode (${alert.pincode || 'Local'})` : alert.locationScope === 'city' ? `City (${alert.city || 'Local'})` : 'All Locations'}
+                          </span>
+                          {alert.maxPrice && <span className={styles.criteriaTag}>💰 Max: ₹{alert.maxPrice}</span>}
+                          <span className={styles.criteriaTag} style={{ background: '#dcfce7', color: '#166534', borderColor: '#bbf7d0' }}>
+                            🟢 Alert Active
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className={styles.alertActions}>
+                        <button
+                          type="button"
+                          className={styles.applySearchBtn}
+                          onClick={() => handleApplySavedSearch(alert)}
+                        >
+                          🔍 View in Market
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.deleteAlertBtn}
+                          onClick={() => handleDeleteSavedSearch(alert._id)}
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

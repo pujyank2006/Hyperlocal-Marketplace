@@ -243,3 +243,135 @@
     margin: 6px 0;
     box-sizing: border-box;
 }
+
+/* Profile Section Tabs */
+.tabsContainer {
+    display: flex;
+    gap: 8px;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 20px;
+    padding-bottom: 4px;
+    overflow-x: auto;
+}
+
+.tabBtn {
+    background: none;
+    border: none;
+    padding: 10px 16px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #64748b;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -6px;
+}
+
+.tabBtn:hover {
+    color: #0284c7;
+    background: #f8fafc;
+}
+
+.tabBtnActive {
+    color: #0284c7;
+    border-bottom: 3px solid #0284c7;
+    background: rgba(2, 132, 199, 0.04);
+}
+
+/* Saved Search Alert Cards */
+.alertsList {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.alertCard {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    transition: box-shadow 0.2s;
+}
+
+.alertCard:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    border-color: #cbd5e1;
+}
+
+.alertInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.alertTitle {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.alertCriteria {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #475569;
+}
+
+.criteriaTag {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.alertActions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.applySearchBtn {
+    background: #0284c7;
+    color: #ffffff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.applySearchBtn:hover {
+    background: #0369a1;
+}
+
+.deleteAlertBtn {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.deleteAlertBtn:hover {
+    background: #fee2e2;
+}

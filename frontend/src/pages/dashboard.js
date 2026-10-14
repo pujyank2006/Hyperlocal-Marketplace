@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 
 import styles from "../styles/dashboard.module.css";
@@ -6,8 +7,8 @@ import Navbar from '../Components/Navbar';
 import ChatWidget from '../Components/ChatWidget';
 import MapView from '../Components/MapView';
 import { SkeletonGrid } from '../Components/SkeletonLoader';
-import { listingService } from '../services/api';
-import { handleError } from '../utils';
+import { listingService, wishlistService, savedSearchService } from '../services/api';
+import { handleError, handleSuccess } from '../utils';
 
 const CATEGORIES = [
   'All',
@@ -22,16 +23,24 @@ const CATEGORIES = [
 ];
 
 function Dashboard() {
+  const [searchParams] = useSearchParams();
   const [listings, setListings] = useState([]);
   const [userLocation, setUserLocation] = useState({ pincode: '', city: '', latitude: null, longitude: null });
   const [isLoading, setIsLoading] = useState(true);
 
   // Filters State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [locationScope, setLocationScope] = useState('pincode'); // 'pincode', 'city', 'all'
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'All');
+  const [locationScope, setLocationScope] = useState(searchParams.get('scope') || 'pincode'); // 'pincode', 'city', 'all'
   const [maxDistance, setMaxDistance] = useState(''); // Distance radius filter in km ('', '5', '10', '25', '50')
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'map'
+
+  // Save Search Alert Modal State
+  const [showSaveAlertModal, setShowSaveAlertModal] = useState(false);
+  const [alertLocationScope, setAlertLocationScope] = useState('all');
+  const [alertCustomTitle, setAlertCustomTitle] = useState('');
+  const [alertMaxPrice, setAlertMaxPrice] = useState('');
+  const [isSavingAlert, setIsSavingAlert] = useState(false);
 
   // Selected item & Image Gallery Carousel state
   const [selectedItem, setSelectedItem] = useState(null);
@@ -41,6 +50,89 @@ function Dashboard() {
 
   // Chat Target State
   const [chatTarget, setChatTarget] = useState({ isOpen: false, listingId: null, sellerId: null });
+
+  // Sync incoming searchParams if applied from Saved Searches tab
+  useEffect(() => {
+    const q = searchParams.get('q');
+    const cat = searchParams.get('category');
+    const scope = searchParams.get('scope');
+    if (q !== null) setSearchQuery(q);
+    if (cat && CATEGORIES.includes(cat)) setSelectedCategory(cat);
+    if (scope) setLocationScope(scope);
+  }, [searchParams]);
+
+  // Wishlist Toggle Handler with optimistic UI update
+  const handleToggleWishlist = async (e, listingId) => {
+    if (e) e.stopPropagation();
+
+    // Optimistic toggle
+    setListings(prev =>
+      prev.map(item =>
+        item._id === listingId
+          ? {
+              ...item,
+              isWishlisted: !item.isWishlisted,
+              wishlistCount: item.isWishlisted
+                ? Math.max(0, (item.wishlistCount || 1) - 1)
+                : (item.wishlistCount || 0) + 1
+            }
+          : item
+      )
+    );
+
+    if (selectedItem && selectedItem._id === listingId) {
+      setSelectedItem(prev => ({
+        ...prev,
+        isWishlisted: !prev.isWishlisted,
+        wishlistCount: prev.isWishlisted
+          ? Math.max(0, (prev.wishlistCount || 1) - 1)
+          : (prev.wishlistCount || 0) + 1
+      }));
+    }
+
+    try {
+      const data = await wishlistService.toggle(listingId);
+      if (data.success) {
+        handleSuccess(data.isWishlisted ? "❤️ Saved to wishlist!" : "🤍 Removed from wishlist");
+      }
+    } catch (err) {
+      console.error("Wishlist error:", err);
+      handleError("Could not update wishlist");
+      fetchFeed();
+    }
+  };
+
+  // Save Search Alert Submission Handler
+  const handleConfirmSaveAlert = async (e) => {
+    e.preventDefault();
+    try {
+      setIsSavingAlert(true);
+      const payload = {
+        title: alertCustomTitle.trim() || undefined,
+        query: searchQuery.trim(),
+        category: selectedCategory,
+        locationScope: alertLocationScope,
+        pincode: alertLocationScope === 'pincode' ? (userLocation.pincode || '').trim() : undefined,
+        city: alertLocationScope === 'city' ? (userLocation.city || '').trim() : undefined,
+        maxPrice: alertMaxPrice ? Number(alertMaxPrice) : undefined
+      };
+
+      const res = await savedSearchService.saveSearch(payload);
+      if (res.success) {
+        handleSuccess("🔔 Search alert saved! You'll be notified when matching items appear.");
+        setShowSaveAlertModal(false);
+        setAlertCustomTitle('');
+        setAlertMaxPrice('');
+      } else {
+        handleError(res.message || "Failed to save alert");
+      }
+    } catch (err) {
+      console.error("Error saving search alert:", err);
+      handleError(err.message || "Failed to save search alert");
+    } finally {
+      setIsSavingAlert(false);
+    }
+  };
 
   const fetchFeed = useCallback(async () => {
     try {
@@ -162,6 +254,19 @@ function Dashboard() {
               <option value="25" style={{ background: '#ffffff', color: '#0f172a' }}>📏 Within 25 km</option>
               <option value="50" style={{ background: '#ffffff', color: '#0f172a' }}>📏 Within 50 km</option>
             </select>
+
+            {/* SAVE SEARCH ALERT BUTTON */}
+            <button
+              type="button"
+              className={styles.saveAlertBtn}
+              onClick={() => {
+                setAlertLocationScope('all');
+                setShowSaveAlertModal(true);
+              }}
+              title="Save this search and receive alerts when new items match"
+            >
+              🔔 Save Alert
+            </button>
           </div>
         </div>
 
@@ -236,6 +341,15 @@ function Dashboard() {
                 onClick={() => handleOpenItem(item)}
               >
                 <div className={styles.cardImgWrapper}>
+                  {/* FLOATING WISHLIST BUTTON */}
+                  <button
+                    className={styles.wishlistBtn}
+                    onClick={(e) => handleToggleWishlist(e, item._id)}
+                    title={item.isWishlisted ? "Remove from Wishlist" : "Save to Wishlist"}
+                  >
+                    {item.isWishlisted ? "❤️" : "🤍"}
+                  </button>
+
                   <span className={styles.badgeCategory}>{item.category}</span>
                   {item.status && item.status !== 'Active' && (
                     <span style={{
@@ -409,6 +523,32 @@ function Dashboard() {
                   💬 Chat with Seller & Make Offer
                 </button>
 
+                {/* MODAL WISHLIST ACTION */}
+                <button
+                  type="button"
+                  className={styles.viewBtn}
+                  style={{
+                    marginTop: '8px',
+                    width: '100%',
+                    padding: '11px',
+                    fontSize: '0.92rem',
+                    fontWeight: '700',
+                    background: selectedItem.isWishlisted ? '#fef2f2' : '#f8fafc',
+                    color: selectedItem.isWishlisted ? '#e11d48' : '#334155',
+                    border: selectedItem.isWishlisted ? '1.5px solid #fecdd3' : '1px solid #cbd5e1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                  onClick={(e) => handleToggleWishlist(e, selectedItem._id)}
+                >
+                  <span>{selectedItem.isWishlisted ? "❤️ Saved in Wishlist" : "🤍 Save to Wishlist"}</span>
+                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                    ({selectedItem.wishlistCount || 0} saves)
+                  </span>
+                </button>
+
                 {!showContact ? (
                   <button
                     className={styles.viewBtn}
@@ -464,6 +604,81 @@ function Dashboard() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* SAVE SEARCH ALERT MODAL */}
+      {showSaveAlertModal && (
+        <div className={styles.saveSearchModalOverlay} onClick={() => setShowSaveAlertModal(false)}>
+          <div className={styles.saveSearchModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.saveSearchHeader}>
+              <h3>🔔 Create Search Alert</h3>
+              <button className={styles.closeBtn} onClick={() => setShowSaveAlertModal(false)}>&times;</button>
+            </div>
+            <form onSubmit={handleConfirmSaveAlert}>
+              <div className={styles.saveSearchBody}>
+                <div className={styles.alertSummaryBox}>
+                  <strong>Active Filter Criteria:</strong>
+                  <div>Category: <strong>{selectedCategory}</strong></div>
+                  {searchQuery && <div>Keywords: <strong>"{searchQuery}"</strong></div>}
+                  {maxDistance && <div>Radius: <strong>Within {maxDistance} km</strong></div>}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                    Location Coverage:
+                  </label>
+                  <select
+                    className={styles.searchInput}
+                    style={{ paddingLeft: '12px' }}
+                    value={alertLocationScope}
+                    onChange={(e) => setAlertLocationScope(e.target.value)}
+                  >
+                    <option value="all">🌐 Everywhere / All Locations (Recommended)</option>
+                    <option value="city">🏙️ In My City {userLocation.city ? `(${userLocation.city})` : ''}</option>
+                    <option value="pincode">📍 In My Pincode {userLocation.pincode ? `(${userLocation.pincode})` : ''}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                    Alert Label (Optional):
+                  </label>
+                  <input
+                    type="text"
+                    className={styles.searchInput}
+                    style={{ paddingLeft: '12px' }}
+                    placeholder={searchQuery ? `"${searchQuery}" in ${selectedCategory}` : `${selectedCategory} items`}
+                    value={alertCustomTitle}
+                    onChange={(e) => setAlertCustomTitle(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                    Max Price Filter (₹, Optional):
+                  </label>
+                  <input
+                    type="number"
+                    className={styles.searchInput}
+                    style={{ paddingLeft: '12px' }}
+                    placeholder="e.g. 5000"
+                    value={alertMaxPrice}
+                    onChange={(e) => setAlertMaxPrice(e.target.value)}
+                  />
+                </div>
+
+                <div className={styles.saveSearchActions}>
+                  <button type="button" className={styles.cancelSaveBtn} onClick={() => setShowSaveAlertModal(false)}>
+                    Cancel
+                  </button>
+                  <button type="submit" className={styles.confirmSaveBtn} disabled={isSavingAlert}>
+                    {isSavingAlert ? "Saving..." : "🔔 Save Alert"}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}

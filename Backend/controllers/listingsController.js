@@ -1,6 +1,8 @@
 const Listings = require('../models/listings');
 const User = require('../models/user');
+const Wishlist = require('../models/wishlist');
 const { resolveCoordinates, calculateDistanceKm } = require('../utils/geoUtils');
+const { checkAndNotifyMatches } = require('./savedSearchController');
 
 async function addNewListings(req, res) {
     try {
@@ -43,11 +45,17 @@ async function addNewListings(req, res) {
             status: 'Active',
             views: 0,
             contactClicks: 0,
+            wishlistCount: 0,
             latitude: coords.lat,
             longitude: coords.lng
         });
 
         await newListing.save();
+
+        // Trigger alert notifications for users with matching saved searches
+        checkAndNotifyMatches(newListing, req.app.get('io')).catch(err => {
+            console.error("Alert notification matching error:", err);
+        });
 
         return res.status(201).json({
             success: true,
@@ -138,7 +146,14 @@ async function getMarketplaceFeed(req, res) {
 
         let listings = await Listings.find(query).sort({ createdAt: -1 });
 
-        // Enrich listings with coordinates and calculate distance from user
+        // Retrieve wishlisted listing IDs for current user for fast feed decoration
+        let wishlistedSet = new Set();
+        if (userID) {
+            const userWishlists = await Wishlist.find({ user: userID }).select('listing');
+            wishlistedSet = new Set(userWishlists.map(w => w.listing.toString()));
+        }
+
+        // Enrich listings with coordinates, distance, and wishlisted state
         const enrichedListings = listings.map(item => {
             const itemObj = item.toObject();
             const itemCoords = resolveCoordinates({
@@ -161,7 +176,8 @@ async function getMarketplaceFeed(req, res) {
                 ...itemObj,
                 latitude: itemCoords.lat,
                 longitude: itemCoords.lng,
-                distanceKm
+                distanceKm,
+                isWishlisted: wishlistedSet.has(itemObj._id.toString())
             };
         });
 

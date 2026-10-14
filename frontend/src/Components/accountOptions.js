@@ -24,7 +24,13 @@ function AccountDetails({ open, onClose }) {
     return (
         <div className={styles.overlay} onClick={(e) => e.stopPropagation()}>
             <div className={styles.button} onClick={() => { onClose(); navigate('/profile'); }}>
-                👤 Profile
+                👤 Profile Details
+            </div>
+            <div className={styles.button} onClick={() => { onClose(); navigate('/profile?tab=wishlist'); }}>
+                ❤️ My Wishlist
+            </div>
+            <div className={styles.button} onClick={() => { onClose(); navigate('/profile?tab=alerts'); }}>
+                🔔 Saved Search Alerts
             </div>
             <div className={styles.divider}></div>
             <div className={`${styles.button} ${styles.logoutBtn}`} onClick={handleLogout}>

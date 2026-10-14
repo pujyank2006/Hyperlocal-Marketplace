@@ -55,6 +55,10 @@ const listingsSchema = new schema ({
         type: Number,
         default: 0
     },
+    wishlistCount: {
+        type: Number,
+        default: 0
+    },
     latitude: {
         type: Number,
         default: null
