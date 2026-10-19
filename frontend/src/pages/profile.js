@@ -8,9 +8,10 @@ import Navbar from '../Components/Navbar';
 import CreateListing from '../Components/createListing';
 import EditListing from '../Components/editListing';
 import { SkeletonGrid } from '../Components/SkeletonLoader';
+import InvoiceModal from '../Components/InvoiceModal';
 import { useAuth } from '../context/AuthContext';
-import { userService, listingService, wishlistService, savedSearchService } from '../services/api';
-import { handleError, handleSuccess } from '../utils';
+import { userService, listingService, wishlistService, savedSearchService, paymentService } from '../services/api';
+import { handleError, handleSuccess, fetchPincodeCoordinates } from '../utils';
 
 function Profile() {
   const navigate = useNavigate();
@@ -20,12 +21,18 @@ function Profile() {
   const [userListings, setUserListings] = useState([]);
   const [isLoadingListings, setIsLoadingListings] = useState(true);
 
-  // Tabs state: 'listings', 'wishlist', 'alerts'
+  // Tabs state: 'listings', 'purchases', 'sales', 'wishlist', 'alerts'
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'listings');
   const [wishlist, setWishlist] = useState([]);
   const [isLoadingWishlist, setIsLoadingWishlist] = useState(false);
   const [savedSearches, setSavedSearches] = useState([]);
   const [isLoadingAlerts, setIsLoadingAlerts] = useState(false);
+
+  // Orders Ledger state
+  const [ordersPurchases, setOrdersPurchases] = useState([]);
+  const [ordersSales, setOrdersSales] = useState([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [activeInvoiceOrder, setActiveInvoiceOrder] = useState(null);
 
   // Edit Modal State
   const [editingListing, setEditingListing] = useState(null);
@@ -41,7 +48,8 @@ function Profile() {
     pincode: "",
     address: "",
     latitude: null,
-    longitude: null
+    longitude: null,
+    isPincodeFallback: false
   });
 
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
@@ -78,7 +86,8 @@ function Profile() {
         setAddressDetails(prev => ({
           ...prev,
           latitude: lat,
-          longitude: lng
+          longitude: lng,
+          isPincodeFallback: false
         }));
 
         try {
@@ -90,6 +99,7 @@ function Profile() {
               ...prev,
               latitude: lat,
               longitude: lng,
+              isPincodeFallback: false,
               area: addr.suburb || addr.neighbourhood || addr.residential || addr.road || prev.area,
               pincode: addr.postcode || prev.pincode,
               address: data.display_name || prev.address
@@ -109,6 +119,23 @@ function Profile() {
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
+  };
+
+  const handlePincodeBlur = async (e) => {
+    const val = (e.target.value || '').trim();
+    if (val.length === 6 && (!addressDetails.latitude || addressDetails.isPincodeFallback)) {
+      setIsDetectingLocation(true);
+      const coords = await fetchPincodeCoordinates(val);
+      setIsDetectingLocation(false);
+      if (coords) {
+        setAddressDetails(prev => ({
+          ...prev,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          isPincodeFallback: true
+        }));
+      }
+    }
   };
 
   async function updateUser(data) {
@@ -146,8 +173,26 @@ function Profile() {
     if (!validateAddress(addressDetails)) {
       return handleError("Please fill all address details");
     }
-    const success = await updateUser(addressDetails);
+
+    let updatedDetails = { ...addressDetails };
+    // If exact GPS not captured or pincode changed without GPS update, resolve pincode centroid
+    if ((!updatedDetails.latitude || !updatedDetails.longitude || updatedDetails.isPincodeFallback) && updatedDetails.pincode) {
+      setIsDetectingLocation(true);
+      const coords = await fetchPincodeCoordinates(updatedDetails.pincode.trim());
+      setIsDetectingLocation(false);
+      if (coords) {
+        updatedDetails.latitude = coords.latitude;
+        updatedDetails.longitude = coords.longitude;
+        updatedDetails.isPincodeFallback = true;
+      }
+    }
+
+    const payload = { ...updatedDetails };
+    delete payload.isPincodeFallback;
+
+    const success = await updateUser(payload);
     if (success) {
+      setAddressDetails(updatedDetails);
       handleSuccess("Address & Listings location updated successfully");
       setIsEditingAddress(false);
       fetchUserListings();
@@ -274,10 +319,25 @@ function Profile() {
     navigate(`/dashboard?${params.toString()}`);
   };
 
+  const fetchOrders = useCallback(async () => {
+    try {
+      setIsLoadingOrders(true);
+      const res = await paymentService.getMyOrders();
+      if (res && res.success) {
+        setOrdersPurchases(res.purchases || []);
+        setOrdersSales(res.sales || []);
+      }
+    } catch (err) {
+      console.error("Error fetching orders:", err);
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  }, []);
+
   // Sync tab with URL searchParams
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['listings', 'wishlist', 'alerts'].includes(tab)) {
+    if (tab && ['listings', 'purchases', 'sales', 'wishlist', 'alerts'].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -288,8 +348,10 @@ function Profile() {
       fetchWishlist();
     } else if (activeTab === 'alerts') {
       fetchSavedSearches();
+    } else if (activeTab === 'purchases' || activeTab === 'sales') {
+      fetchOrders();
     }
-  }, [activeTab, fetchWishlist, fetchSavedSearches]);
+  }, [activeTab, fetchWishlist, fetchSavedSearches, fetchOrders]);
 
   useEffect(() => {
     userService.getProfile()
@@ -306,14 +368,16 @@ function Profile() {
             pincode: data.user.pincode || "",
             address: data.user.address || "",
             latitude: data.user.latitude || null,
-            longitude: data.user.longitude || null
+            longitude: data.user.longitude || null,
+            isPincodeFallback: false
           });
         }
       })
       .catch(err => console.error("Error fetching user:", err));
 
     fetchUserListings();
-  }, [fetchUserListings]);
+    fetchOrders();
+  }, [fetchUserListings, fetchOrders]);
 
   if (!user) return <p style={{ padding: "40px", textAlign: "center" }}>Loading user profile...</p>;
 
@@ -404,11 +468,11 @@ function Profile() {
                     </button>
                     {addressDetails.latitude && addressDetails.longitude ? (
                       <div style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: '600', marginTop: '4px' }}>
-                        ✅ GPS Captured: ({addressDetails.latitude.toFixed(4)}, {addressDetails.longitude.toFixed(4)})
+                        {addressDetails.isPincodeFallback ? "📍 Pincode Centroid Active" : "✅ GPS Captured"}: ({addressDetails.latitude.toFixed(4)}, {addressDetails.longitude.toFixed(4)})
                       </div>
                     ) : (
                       <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
-                        ℹ️ Map view will use exact GPS if available, else pincode center fallback.
+                        ℹ️ If GPS location is not used, coordinates will automatically fall back to your pincode center.
                       </div>
                     )}
                   </div>
@@ -428,6 +492,7 @@ function Profile() {
                     placeholder="Pincode"
                     value={addressDetails.pincode}
                     onChange={(e) => handleChange(e, "address")}
+                    onBlur={handlePincodeBlur}
                   />
                   <input
                     className={styles.inputSpaces}
@@ -482,6 +547,18 @@ function Profile() {
               onClick={() => { setActiveTab('listings'); setSearchParams({ tab: 'listings' }); }}
             >
               🛍️ My Listings ({userListings.length})
+            </button>
+            <button
+              className={`${styles.tabBtn} ${activeTab === 'purchases' ? styles.tabBtnActive : ''}`}
+              onClick={() => { setActiveTab('purchases'); setSearchParams({ tab: 'purchases' }); }}
+            >
+              💳 Purchases ({ordersPurchases.length})
+            </button>
+            <button
+              className={`${styles.tabBtn} ${activeTab === 'sales' ? styles.tabBtnActive : ''}`}
+              onClick={() => { setActiveTab('sales'); setSearchParams({ tab: 'sales' }); }}
+            >
+              💰 Sales ({ordersSales.length})
             </button>
             <button
               className={`${styles.tabBtn} ${activeTab === 'wishlist' ? styles.tabBtnActive : ''}`}
@@ -583,6 +660,132 @@ function Profile() {
                             🗑️ Delete
                           </button>
                         </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* TAB: MY PURCHASES */}
+          {activeTab === 'purchases' && (
+            <>
+              <div className={styles.listingsHeader}>
+                <h2>💳 My Purchases ({ordersPurchases.length})</h2>
+              </div>
+
+              {isLoadingOrders ? (
+                <div className={styles.listingsGrid}>
+                  <SkeletonGrid count={3} />
+                </div>
+              ) : ordersPurchases.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <p>💳 No purchases yet.</p>
+                  <p style={{ fontSize: "0.9rem", color: "#94a3b8", marginTop: "6px" }}>
+                    Browse listings on the Dashboard and click <strong>Buy Now</strong> to make local purchases!
+                  </p>
+                </div>
+              ) : (
+                <div className={styles.ordersList}>
+                  {ordersPurchases.map(order => (
+                    <div key={order._id} className={styles.orderCard}>
+                      <div className={styles.orderMain}>
+                        <img
+                          src={
+                            order.metadata?.listingImage
+                              ? (order.metadata.listingImage.startsWith('http') ? order.metadata.listingImage : `http://localhost:9000${order.metadata.listingImage}`)
+                              : 'https://placehold.co/80x80?text=Item'
+                          }
+                          alt={order.metadata?.listingTitle || 'Item'}
+                          className={styles.orderThumb}
+                          onError={(e) => { e.target.src = 'https://placehold.co/80x80?text=Item'; }}
+                        />
+                        <div className={styles.orderInfo}>
+                          <h4 className={styles.orderTitle}>{order.metadata?.listingTitle || 'Marketplace Item'}</h4>
+                          <div className={styles.orderMetaLine}>
+                            <span className={styles.criteriaTag}>Ref: {order.orderId}</span>
+                            <span className={styles.criteriaTag}>📁 {order.metadata?.listingCategory}</span>
+                            <span>👤 Seller: <strong>{order.metadata?.sellerName}</strong> ({order.metadata?.sellerCity || 'Local'})</span>
+                            <span>📅 {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            <span style={{ color: '#16a34a', fontWeight: '700' }}>
+                              ✓ {order.deliveryType === 'local_pickup' ? '📍 Local Pickup' : '🤝 Direct Handover'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={styles.orderRight}>
+                        <div className={styles.orderPrice}>₹{Number(order.amount).toLocaleString('en-IN')}</div>
+                        <button
+                          type="button"
+                          className={styles.invoiceBtn}
+                          onClick={() => setActiveInvoiceOrder(order)}
+                        >
+                          📄 View Invoice
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* TAB: MY SALES */}
+          {activeTab === 'sales' && (
+            <>
+              <div className={styles.listingsHeader}>
+                <h2>💰 My Sales & Revenue ({ordersSales.length})</h2>
+              </div>
+
+              {isLoadingOrders ? (
+                <div className={styles.listingsGrid}>
+                  <SkeletonGrid count={3} />
+                </div>
+              ) : ordersSales.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <p>💰 No sales yet.</p>
+                  <p style={{ fontSize: "0.9rem", color: "#94a3b8", marginTop: "6px" }}>
+                    When buyers purchase your active listings, your sales ledger and payment receipts will appear here!
+                  </p>
+                </div>
+              ) : (
+                <div className={styles.ordersList}>
+                  {ordersSales.map(order => (
+                    <div key={order._id} className={styles.orderCard}>
+                      <div className={styles.orderMain}>
+                        <img
+                          src={
+                            order.metadata?.listingImage
+                              ? (order.metadata.listingImage.startsWith('http') ? order.metadata.listingImage : `http://localhost:9000${order.metadata.listingImage}`)
+                              : 'https://placehold.co/80x80?text=Item'
+                          }
+                          alt={order.metadata?.listingTitle || 'Item'}
+                          className={styles.orderThumb}
+                          onError={(e) => { e.target.src = 'https://placehold.co/80x80?text=Item'; }}
+                        />
+                        <div className={styles.orderInfo}>
+                          <h4 className={styles.orderTitle}>{order.metadata?.listingTitle || 'Marketplace Item'}</h4>
+                          <div className={styles.orderMetaLine}>
+                            <span className={styles.criteriaTag}>Ref: {order.orderId}</span>
+                            <span className={styles.criteriaTag}>📁 {order.metadata?.listingCategory}</span>
+                            <span>👤 Buyer: <strong>{order.metadata?.buyerName}</strong> ({order.metadata?.buyerCity || 'Local'})</span>
+                            <span>📅 {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            <span style={{ color: '#16a34a', fontWeight: '700' }}>✓ PAID & VERIFIED</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={styles.orderRight}>
+                        <div className={styles.orderPrice} style={{ color: '#16a34a' }}>+₹{Number(order.amount).toLocaleString('en-IN')}</div>
+                        <button
+                          type="button"
+                          className={styles.invoiceBtn}
+                          onClick={() => setActiveInvoiceOrder(order)}
+                        >
+                          📄 View Receipt
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -730,6 +933,13 @@ function Profile() {
         isOpen={Boolean(editingListing)}
         onClose={() => setEditingListing(null)}
         onListingUpdated={handleListingUpdated}
+      />
+
+      {/* Transaction Invoice Modal */}
+      <InvoiceModal
+        isOpen={Boolean(activeInvoiceOrder)}
+        order={activeInvoiceOrder}
+        onClose={() => setActiveInvoiceOrder(null)}
       />
 
       <ToastContainer />

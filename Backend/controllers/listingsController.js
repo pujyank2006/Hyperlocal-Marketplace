@@ -111,13 +111,17 @@ async function getMarketplaceFeed(req, res) {
             }
         }
 
+        console.log(`[Feed] User Profile DB Fields: city="${userCity}", pincode="${userPincode}", raw latitude=${currentUser?.latitude}, raw longitude=${currentUser?.longitude}`);
+
         const userCoords = resolveCoordinates({
             latitude: currentUser?.latitude,
             longitude: currentUser?.longitude,
             pincode: userPincode,
             city: userCity,
-            area: currentUser?.area
+            area: currentUser?.area,
+            label: 'Current User'
         });
+        console.log(`[Feed] Resolved User Coords for Distance Calc: (${userCoords.lat}, ${userCoords.lng})`);
 
         // Location Scope Filter: 'pincode', 'city', or 'all'
         if (locationScope === 'pincode' && userPincode) {
@@ -162,15 +166,20 @@ async function getMarketplaceFeed(req, res) {
                 pincode: itemObj.pincode,
                 city: itemObj.city,
                 area: itemObj.area,
-                id: itemObj._id
+                id: itemObj._id,
+                label: `Item "${itemObj.title}"`
             });
 
             const distanceKm = calculateDistanceKm(
                 userCoords.lat,
                 userCoords.lng,
                 itemCoords.lat,
-                itemCoords.lng
+                itemCoords.lng,
+                'User',
+                `Item "${itemObj.title}"`
             );
+
+            console.log(`   🔎 [Feed Result] "${itemObj.title}" (PIN: ${itemObj.pincode}, City: ${itemObj.city}) -> DB coords: (${itemObj.latitude}, ${itemObj.longitude}) -> Resolved: (${itemCoords.lat}, ${itemCoords.lng}) => Distance: ${distanceKm} km`);
 
             return {
                 ...itemObj,
@@ -180,6 +189,7 @@ async function getMarketplaceFeed(req, res) {
                 isWishlisted: wishlistedSet.has(itemObj._id.toString())
             };
         });
+        console.log(`===========================================================================\n`);
 
         // Filter by maxDistance radius if provided
         let finalFeed = enrichedListings;

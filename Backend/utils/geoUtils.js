@@ -32,17 +32,82 @@ const CITY_COORDINATES = {
   'gurgaon': { lat: 28.4595, lng: 77.0266 },
 };
 
+// High-priority Pincode Centroid Lookup (resolves exact neighborhood centers)
+const PINCODE_COORDINATES = {
+  // Hyderabad & Secunderabad
+  '500084': { lat: 17.4628, lng: 78.3614, area: 'Kondapur / Kothaguda' },
+  '500081': { lat: 17.4483, lng: 78.3915, area: 'Madhapur / Hitec City' },
+  '500032': { lat: 17.4401, lng: 78.3489, area: 'Gachibowli' },
+  '500034': { lat: 17.4156, lng: 78.4357, area: 'Banjara Hills' },
+  '500033': { lat: 17.4319, lng: 78.4073, area: 'Jubilee Hills' },
+  '500072': { lat: 17.4849, lng: 78.4138, area: 'Kukatpally' },
+  '500019': { lat: 17.4837, lng: 78.3158, area: 'Serilingampally' },
+  '500001': { lat: 17.3871, lng: 78.4734, area: 'Hyderabad GPO / Abids' },
+  '500003': { lat: 17.4399, lng: 78.4983, area: 'Secunderabad' },
+  '500090': { lat: 17.5186, lng: 78.3842, area: 'Nizampet' },
+  '500049': { lat: 17.4988, lng: 78.3472, area: 'Miyapur' },
+
+  // Bengaluru
+  '560001': { lat: 12.9797, lng: 77.5947, area: 'Bengaluru GPO / MG Road' },
+  '560038': { lat: 12.9784, lng: 77.6408, area: 'Indiranagar' },
+  '560034': { lat: 12.9352, lng: 77.6245, area: 'Koramangala' },
+  '560066': { lat: 12.9698, lng: 77.7500, area: 'Whitefield' },
+  '560100': { lat: 12.8452, lng: 77.6602, area: 'Electronic City' },
+  '560076': { lat: 12.8893, lng: 77.5976, area: 'BTM Layout / Bannerghatta' },
+
+  // Delhi NCR
+  '110001': { lat: 28.6293, lng: 77.2189, area: 'Connaught Place' },
+  '110085': { lat: 28.7142, lng: 77.1082, area: 'Rohini' },
+  '110016': { lat: 28.5494, lng: 77.2001, area: 'Hauz Khas' },
+  '201301': { lat: 28.5700, lng: 77.3271, area: 'Noida Sector 1-19' },
+  '122001': { lat: 28.4595, lng: 77.0266, area: 'Gurugram' },
+
+  // Mumbai & Pune
+  '400001': { lat: 18.9322, lng: 72.8347, area: 'Fort / South Mumbai' },
+  '400050': { lat: 19.0596, lng: 72.8295, area: 'Bandra West' },
+  '400053': { lat: 19.1363, lng: 72.8277, area: 'Andheri West' },
+  '411001': { lat: 18.5204, lng: 73.8567, area: 'Pune Station' },
+  '411057': { lat: 18.5913, lng: 73.7389, area: 'Hinjawadi' }
+};
+
 /**
  * Derives deterministic latitude & longitude for a location (city, pincode, area)
  */
-function resolveCoordinates({ latitude, longitude, pincode, city, area, id }) {
+function resolveCoordinates({ latitude, longitude, pincode, city, area, id, label = '' }) {
+  const prefix = label ? `[geoUtils:${label}]` : '[geoUtils]';
+
+  // 1. Exact GPS coordinates (highest priority)
   if (
     latitude !== undefined && latitude !== null && !isNaN(latitude) && Number(latitude) !== 0 &&
     longitude !== undefined && longitude !== null && !isNaN(longitude) && Number(longitude) !== 0
   ) {
-    return { lat: Number(latitude), lng: Number(longitude) };
+    const coords = { lat: Number(latitude), lng: Number(longitude) };
+    console.log(`📍 ${prefix} Using exact GPS coordinates: (${coords.lat}, ${coords.lng})`);
+    return coords;
   }
 
+  // 2. Pincode centroid lookup (priority over city center!)
+  const cleanPin = pincode ? String(pincode).trim() : '';
+  const pincodeEntry = cleanPin ? PINCODE_COORDINATES[cleanPin] : null;
+
+  if (pincodeEntry) {
+    let seedStr = (area || '') + (id ? id.toString() : '');
+    let hash = 0;
+    for (let i = 0; i < seedStr.length; i++) {
+      hash = (hash << 5) - hash + seedStr.charCodeAt(i);
+      hash |= 0;
+    }
+    const latOffset = (((hash % 100) - 50) / 100000) * 2;
+    const lngOffset = (((((hash >> 2) % 100)) - 50) / 100000) * 2;
+    const coords = {
+      lat: Number((pincodeEntry.lat + latOffset).toFixed(6)),
+      lng: Number((pincodeEntry.lng + lngOffset).toFixed(6))
+    };
+    console.log(`📮 ${prefix} Resolved via PINCODE (${cleanPin} - ${pincodeEntry.area}) centroid: (${coords.lat}, ${coords.lng})`);
+    return coords;
+  }
+
+  // 3. City Center fallback
   const cityKey = (city || '').trim().toLowerCase();
   const baseCoords = CITY_COORDINATES[cityKey] || { lat: 28.6139, lng: 77.2090 }; // Default to Delhi center
 
@@ -57,17 +122,23 @@ function resolveCoordinates({ latitude, longitude, pincode, city, area, id }) {
   const latOffset = (((hash % 100) - 50) / 10000) * 2;
   const lngOffset = (((((hash >> 2) % 100)) - 50) / 10000) * 2;
 
-  return {
+  const coords = {
     lat: Number((baseCoords.lat + latOffset).toFixed(6)),
     lng: Number((baseCoords.lng + lngOffset).toFixed(6))
   };
+
+  console.log(`🏙️ ${prefix} Fallback: No GPS or Pincode match for PIN '${cleanPin}'. Using city center '${cityKey || 'delhi'}': (${coords.lat}, ${coords.lng})`);
+  return coords;
 }
 
 /**
  * Calculates distance between two coordinates in kilometers using Haversine formula
  */
-function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+function calculateDistanceKm(lat1, lon1, lat2, lon2, labelA = 'Point A', labelB = 'Point B') {
+  if (!lat1 || !lon1 || !lat2 || !lon2) {
+    console.log(`⚠️ [geoUtils:calculateDistanceKm] Missing coordinates: [${labelA}] (${lat1}, ${lon1}) to [${labelB}] (${lat2}, ${lon2}) -> Distance: null`);
+    return null;
+  }
 
   const R = 6371; // Radius of Earth in kilometers
   const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -81,12 +152,15 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
       Math.sin(dLon / 2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c;
+  const distance = Number((R * c).toFixed(1)); // Rounded to 1 decimal place (e.g. 1.4)
 
-  return Number(distance.toFixed(1)); // Rounded to 1 decimal place (e.g. 1.4)
+  console.log(`📏 [geoUtils:calculateDistanceKm] Distance between [${labelA}] (${lat1}, ${lon1}) and [${labelB}] (${lat2}, ${lon2}) = ${distance} km`);
+  return distance;
 }
 
 module.exports = {
+  CITY_COORDINATES,
+  PINCODE_COORDINATES,
   resolveCoordinates,
   calculateDistanceKm
 };

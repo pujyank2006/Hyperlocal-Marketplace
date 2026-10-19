@@ -6,7 +6,10 @@ import styles from "../styles/dashboard.module.css";
 import Navbar from '../Components/Navbar';
 import ChatWidget from '../Components/ChatWidget';
 import MapView from '../Components/MapView';
+import PaymentModal from '../Components/PaymentModal';
+import InvoiceModal from '../Components/InvoiceModal';
 import { SkeletonGrid } from '../Components/SkeletonLoader';
+import { useAuth } from '../context/AuthContext';
 import { listingService, wishlistService, savedSearchService } from '../services/api';
 import { handleError, handleSuccess } from '../utils';
 
@@ -50,6 +53,11 @@ function Dashboard() {
 
   // Chat Target State
   const [chatTarget, setChatTarget] = useState({ isOpen: false, listingId: null, sellerId: null });
+
+  // Auth User & Payment Checkout State
+  const { user } = useAuth();
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [activeInvoiceOrder, setActiveInvoiceOrder] = useState(null);
 
   // Sync incoming searchParams if applied from Saved Searches tab
   useEffect(() => {
@@ -134,6 +142,19 @@ function Dashboard() {
     }
   };
 
+  // Payment Success Handler
+  const handlePaymentSuccess = (completedOrder) => {
+    setListings(prev =>
+      prev.map(item =>
+        item._id === completedOrder.listing ? { ...item, status: 'Sold' } : item
+      )
+    );
+    if (selectedItem && selectedItem._id === completedOrder.listing) {
+      setSelectedItem(prev => ({ ...prev, status: 'Sold' }));
+    }
+    fetchFeed();
+  };
+
   const fetchFeed = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -145,6 +166,10 @@ function Dashboard() {
 
       const data = await listingService.getFeed(params);
       if (data.success) {
+        console.log(`%c[Dashboard Feed] Loaded ${data.listings?.length || 0} listings. User Location:`, 'color: #0284c7; font-weight: bold;', data.userLocation);
+        (data.listings || []).forEach((item, idx) => {
+          console.log(`  [#${idx + 1}] "${item.title}" | Distance: ${item.distanceKm} km | Coords: (${item.latitude}, ${item.longitude}) | Pincode: ${item.pincode}`);
+        });
         setListings(data.listings || []);
         if (data.userLocation) {
           setUserLocation(data.userLocation);
@@ -523,6 +548,55 @@ function Dashboard() {
                   💬 Chat with Seller & Make Offer
                 </button>
 
+                {/* BUY NOW / CHECKOUT ACTION */}
+                {selectedItem.status === 'Sold' ? (
+                  <div style={{
+                    marginTop: '10px',
+                    padding: '12px',
+                    textAlign: 'center',
+                    background: '#f1f5f9',
+                    borderRadius: '8px',
+                    color: '#64748b',
+                    fontWeight: '700',
+                    border: '1px solid #cbd5e1'
+                  }}>
+                    🔴 This item has been Sold
+                  </div>
+                ) : user && (selectedItem.relatedUser === (user._id || user.id)) ? (
+                  <div style={{
+                    marginTop: '10px',
+                    padding: '12px',
+                    textAlign: 'center',
+                    background: '#f0fdf4',
+                    borderRadius: '8px',
+                    color: '#16a34a',
+                    fontWeight: '700',
+                    border: '1px solid #bbf7d0'
+                  }}>
+                    🏷️ Your Active Listing
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.viewBtn}
+                    style={{
+                      marginTop: '10px',
+                      width: '100%',
+                      padding: '13px',
+                      fontSize: '1rem',
+                      fontWeight: '800',
+                      background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                      color: '#fff',
+                      boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)',
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => setIsPaymentOpen(true)}
+                  >
+                    💳 Buy Now — ₹{Number(selectedItem.price).toLocaleString('en-IN')}
+                  </button>
+                )}
+
                 {/* MODAL WISHLIST ACTION */}
                 <button
                   type="button"
@@ -682,6 +756,22 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* PAYMENT CHECKOUT MODAL */}
+      <PaymentModal
+        isOpen={isPaymentOpen}
+        listing={selectedItem}
+        onClose={() => setIsPaymentOpen(false)}
+        onPaymentSuccess={handlePaymentSuccess}
+        onViewInvoice={(order) => setActiveInvoiceOrder(order)}
+      />
+
+      {/* TRANSACTION INVOICE MODAL */}
+      <InvoiceModal
+        isOpen={Boolean(activeInvoiceOrder)}
+        order={activeInvoiceOrder}
+        onClose={() => setActiveInvoiceOrder(null)}
+      />
 
       <ChatWidget
         isOpen={chatTarget.isOpen}
