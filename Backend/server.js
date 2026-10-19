@@ -20,6 +20,7 @@ const chatRoutes = require('./routes/chatRouter');
 const wishlistRoutes = require('./routes/wishlistRouter');
 const savedSearchRoutes = require('./routes/savedSearchRouter');
 const notificationRoutes = require('./routes/notificationRouter');
+const paymentRoutes = require('./routes/paymentRouter');
 
 const app = express();
 const server = http.createServer(app);
@@ -79,6 +80,7 @@ app.use('/api/v1/chat', chatRoutes);
 app.use('/api/v1/wishlist', wishlistRoutes);
 app.use('/api/v1/saved-searches', savedSearchRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/payments', paymentRoutes);
 
 // Legacy route aliases for backwards compatibility
 app.use('/auth', authRoutes);

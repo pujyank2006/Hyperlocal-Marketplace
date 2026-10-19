@@ -94,3 +94,16 @@ export const notificationService = {
   markAllAsRead: () => request('/notifications/read-all', { method: 'PATCH' }),
 };
 
+// Payment & Order Ledger Services
+export const paymentService = {
+  createOrder: (listingId, deliveryType = 'local_pickup') =>
+    request('/payments/create-order', { method: 'POST', body: JSON.stringify({ listingId, deliveryType }) }),
+  verifyPayment: (payload) =>
+    request('/payments/verify-payment', { method: 'POST', body: JSON.stringify(payload) }),
+  getMyOrders: () =>
+    request('/payments/my-orders', { method: 'GET' }),
+  getOrderInvoice: (orderId) =>
+    request(`/payments/orders/${orderId}`, { method: 'GET' }),
+};
+
+

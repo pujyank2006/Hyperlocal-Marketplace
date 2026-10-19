@@ -10,7 +10,7 @@ const notificationSchema = new schema({
     },
     type: {
         type: String,
-        enum: ['saved_search_match', 'price_drop', 'general'],
+        enum: ['saved_search_match', 'price_drop', 'order_sale', 'order_placed', 'general'],
         default: 'saved_search_match'
     },
     title: {

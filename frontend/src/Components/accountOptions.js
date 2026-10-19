@@ -26,6 +26,12 @@ function AccountDetails({ open, onClose }) {
             <div className={styles.button} onClick={() => { onClose(); navigate('/profile'); }}>
                 👤 Profile Details
             </div>
+            <div className={styles.button} onClick={() => { onClose(); navigate('/profile?tab=purchases'); }}>
+                💳 My Purchases & Orders
+            </div>
+            <div className={styles.button} onClick={() => { onClose(); navigate('/profile?tab=sales'); }}>
+                💰 My Sales Ledger
+            </div>
             <div className={styles.button} onClick={() => { onClose(); navigate('/profile?tab=wishlist'); }}>
                 ❤️ My Wishlist
             </div>
