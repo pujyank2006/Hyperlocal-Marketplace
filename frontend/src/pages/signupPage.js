@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
-import { handleError, handleSuccess } from '../utils';
+import { handleError, handleSuccess, fetchPincodeCoordinates } from '../utils';
 
 import styles from "../styles/authPages.module.css";
 import SignupLayout from "../Components/signupLayout";
@@ -10,6 +10,7 @@ import SignupLayout from "../Components/signupLayout";
 function SignupPage() {
   const navigate = useNavigate();
   const { signup } = useAuth();
+  const confirmPasswordRef = useRef(null);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,12 +26,22 @@ function SignupPage() {
     password: '',
     confirmPassword: '',
     latitude: null,
-    longitude: null
+    longitude: null,
+    isPincodeFallback: false
   });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setSignupInfo(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePasswordKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      if (!signupInfo.confirmPassword) {
+        e.preventDefault();
+        confirmPasswordRef.current?.focus();
+      }
+    }
   };
 
   const handleDetectLocation = () => {
@@ -45,7 +56,8 @@ function SignupPage() {
         setSignupInfo(prev => ({
           ...prev,
           latitude: lat,
-          longitude: lng
+          longitude: lng,
+          isPincodeFallback: false
         }));
 
         try {
@@ -57,6 +69,7 @@ function SignupPage() {
               ...prev,
               latitude: lat,
               longitude: lng,
+              isPincodeFallback: false,
               state: addr.state || addr.region || prev.state,
               city: addr.city || addr.town || addr.village || addr.county || prev.city,
               area: addr.suburb || addr.neighbourhood || addr.residential || addr.road || prev.area,
@@ -79,7 +92,24 @@ function SignupPage() {
     );
   };
 
-  const nextStep = () => {
+  const handlePincodeBlur = async (e) => {
+    const val = (e.target.value || '').trim();
+    if (val.length === 6 && (!signupInfo.latitude || signupInfo.isPincodeFallback)) {
+      setIsDetectingLocation(true);
+      const coords = await fetchPincodeCoordinates(val);
+      setIsDetectingLocation(false);
+      if (coords) {
+        setSignupInfo(prev => ({
+          ...prev,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          isPincodeFallback: true
+        }));
+      }
+    }
+  };
+
+  const nextStep = async () => {
     if (currentStep === 1) {
       const { name, email, phone } = signupInfo;
       if (!name.trim() || !email.trim() || !phone.trim()) {
@@ -97,6 +127,21 @@ function SignupPage() {
       }
       if (pincode.trim().length !== 6) {
         return handleError("Pincode must be 6 digits");
+      }
+
+      // If user did not use GPS, automatically resolve pincode centroid
+      if (!signupInfo.latitude || !signupInfo.longitude || signupInfo.isPincodeFallback) {
+        setIsDetectingLocation(true);
+        const coords = await fetchPincodeCoordinates(pincode.trim());
+        setIsDetectingLocation(false);
+        if (coords) {
+          setSignupInfo(prev => ({
+            ...prev,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            isPincodeFallback: true
+          }));
+        }
       }
     }
 
@@ -134,7 +179,16 @@ function SignupPage() {
 
     try {
       setIsSubmitting(true);
-      const result = await signup(signupInfo);
+      let payload = { ...signupInfo };
+      if (!payload.latitude && payload.pincode && payload.pincode.trim().length === 6) {
+        const coords = await fetchPincodeCoordinates(payload.pincode.trim());
+        if (coords) {
+          payload.latitude = coords.latitude;
+          payload.longitude = coords.longitude;
+        }
+      }
+      delete payload.isPincodeFallback;
+      const result = await signup(payload);
       if (result.success) {
         handleSuccess(result.message || "Signup successful!");
         setTimeout(() => {
@@ -208,11 +262,11 @@ function SignupPage() {
               </button>
               {signupInfo.latitude && signupInfo.longitude ? (
                 <div style={{ fontSize: '0.8rem', color: '#16a34a', fontWeight: '600', marginTop: '6px' }}>
-                  ✅ GPS Captured: ({signupInfo.latitude.toFixed(4)}, {signupInfo.longitude.toFixed(4)})
+                  {signupInfo.isPincodeFallback ? "📍 Pincode Centroid Active" : "✅ GPS Captured"}: ({signupInfo.latitude.toFixed(4)}, {signupInfo.longitude.toFixed(4)})
                 </div>
               ) : (
                 <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '4px' }}>
-                  ℹ️ If location access is denied, map view will fall back to pincode center.
+                  ℹ️ If GPS location is not used, coordinates will automatically fall back to your pincode center.
                 </div>
               )}
             </div>
@@ -242,7 +296,7 @@ function SignupPage() {
               <li>
                 <div className={styles.eachList}>
                   <label>Pincode: </label>
-                  <input className={styles.inputSpaces} type="text" placeholder="6-digit pincode" name="pincode" onChange={handleChange} value={signupInfo.pincode}/>
+                  <input className={styles.inputSpaces} type="text" placeholder="6-digit pincode" name="pincode" onChange={handleChange} onBlur={handlePincodeBlur} value={signupInfo.pincode}/>
                 </div>
               </li>
             </ul>
@@ -257,14 +311,31 @@ function SignupPage() {
               <li>
                 <div className={styles.eachList}>
                   <label>Password: </label>
-                  <input className={styles.inputSpaces} type="password" placeholder="Password (min 4 chars)" name="password" autoFocus onChange={handleChange} value={signupInfo.password}/>
+                  <input
+                    className={styles.inputSpaces}
+                    type="password"
+                    placeholder="Password (min 4 chars)"
+                    name="password"
+                    autoFocus
+                    onChange={handleChange}
+                    onKeyDown={handlePasswordKeyDown}
+                    value={signupInfo.password}
+                  />
                 </div>
               </li>
 
               <li>
                 <div className={styles.eachList}>
                   <label>Confirm Password: </label>
-                  <input className={styles.inputSpaces} type="password" placeholder="Confirm password" name="confirmPassword" onChange={handleChange} value={signupInfo.confirmPassword}/>
+                  <input
+                    ref={confirmPasswordRef}
+                    className={styles.inputSpaces}
+                    type="password"
+                    placeholder="Confirm password"
+                    name="confirmPassword"
+                    onChange={handleChange}
+                    value={signupInfo.confirmPassword}
+                  />
                 </div>
               </li>
             </ul>
@@ -278,12 +349,12 @@ function SignupPage() {
         <ToastContainer />
 
         {currentStep > 1 && (
-          <button type="button" className={styles.button} onClick={prevStep} disabled={isSubmitting}>Previous</button>
+          <button key="prev-btn" type="button" className={styles.button} onClick={prevStep} disabled={isSubmitting}>Previous</button>
         )}
         {currentStep < 3 ? (
-          <button type="button" className={styles.button} onClick={nextStep} disabled={isSubmitting}>Next</button>
+          <button key="next-btn" type="button" className={styles.button} onClick={nextStep} disabled={isSubmitting}>Next</button>
         ) : (
-          <button type="submit" className={styles.button} disabled={isSubmitting}>
+          <button key="submit-btn" type="submit" className={styles.button} disabled={isSubmitting}>
             {isSubmitting ? "Creating account..." : "Submit"}
           </button>
         )}
