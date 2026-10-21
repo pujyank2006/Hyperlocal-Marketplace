@@ -533,6 +533,11 @@ function Dashboard() {
                 <p style={{ color: '#64748b', fontSize: '0.85rem' }}>
                   📍 Locality: {sellerDetails?.area || selectedItem.area}, {sellerDetails?.city || selectedItem.city} (Pincode: {sellerDetails?.pincode || selectedItem.pincode})
                 </p>
+                {sellerDetails?.trustSummary && <div style={{ marginTop: 8, color: '#475569', fontSize: '0.85rem' }}>
+                  <strong>{sellerDetails.trustSummary.averageRating ? `⭐ ${sellerDetails.trustSummary.averageRating}/5` : 'New member'}</strong>
+                  <span> · {sellerDetails.trustSummary.reviewCount} reviews · {sellerDetails.trustSummary.completedOrders} completed trades</span>
+                  {sellerDetails.trustSummary.badges.map((badge) => <span key={badge.id} title={badge.description} style={{ display: 'inline-block', margin: '5px 5px 0 0', background: '#ecfdf5', color: '#047857', borderRadius: 15, padding: '3px 8px', fontWeight: 700 }}>✓ {badge.label}</span>)}
+                </div>}
 
                 <button
                   className={styles.viewBtn}

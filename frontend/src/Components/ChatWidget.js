@@ -99,6 +99,9 @@ function ChatWidget({ isOpen, onClose, initialConversationId = null, initialList
       if (data.success) {
         setMessages(data.messages || []);
         setTimeout(scrollToBottom, 100);
+        window.dispatchEvent(new CustomEvent('chat_messages_read', {
+          detail: { conversationId: convId, unreadCount: data.unreadCount }
+        }));
       }
     } catch (err) {
       console.error("Error loading messages:", err);

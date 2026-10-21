@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
-import { notificationService } from '../services/api';
+import { notificationService, chatService } from '../services/api';
 import { handleSuccess } from '../utils';
 import styles from '../ComponentStyles/navbar.module.css';
 import AccountOptions from './accountOptions';
@@ -18,6 +18,7 @@ function Navbar() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   // Fetch unread count & setup socket
   useEffect(() => {
@@ -31,6 +32,14 @@ function Navbar() {
         }
       })
       .catch(err => console.error("Unread notifs error:", err));
+
+    chatService.getUnreadCount()
+      .then(data => {
+        if (data && data.success) {
+          setUnreadMessages(data.unreadCount || 0);
+        }
+      })
+      .catch(err => console.error("Unread messages error:", err));
 
     const socket = io(SOCKET_SERVER_URL, { withCredentials: true });
 
@@ -50,10 +59,56 @@ function Navbar() {
       }
     });
 
+    socket.on('notifications_read', (data) => {
+      setUnreadNotifs(data.unreadCount !== undefined ? data.unreadCount : 0);
+    });
+
+    socket.on('new_message_notification', (data) => {
+      setUnreadMessages(prev => prev + 1);
+      const senderName = data.senderName || 'Someone';
+      const msgText = data.text || data.message?.text || 'Sent you a message';
+      handleSuccess(`💬 ${senderName}: ${msgText}`);
+    });
+
+    socket.on('messages_read', (data) => {
+      setUnreadMessages(data.unreadCount !== undefined ? data.unreadCount : 0);
+    });
+
     return () => {
       socket.disconnect();
     };
   }, [user]);
+
+  // Sync state across components without full page reload
+  useEffect(() => {
+    const handleChatRead = (e) => {
+      if (e.detail && e.detail.unreadCount !== undefined) {
+        setUnreadMessages(e.detail.unreadCount);
+      } else {
+        chatService.getUnreadCount().then(data => {
+          if (data?.success) setUnreadMessages(data.unreadCount || 0);
+        });
+      }
+    };
+
+    const handleNotifRead = (e) => {
+      if (e.detail && e.detail.unreadCount !== undefined) {
+        setUnreadNotifs(e.detail.unreadCount);
+      } else {
+        notificationService.getUnreadCount().then(data => {
+          if (data?.success) setUnreadNotifs(data.unreadCount || 0);
+        });
+      }
+    };
+
+    window.addEventListener('chat_messages_read', handleChatRead);
+    window.addEventListener('notifications_read', handleNotifRead);
+
+    return () => {
+      window.removeEventListener('chat_messages_read', handleChatRead);
+      window.removeEventListener('notifications_read', handleNotifRead);
+    };
+  }, []);
 
   const handleNotificationClick = (notif) => {
     setUnreadNotifs(prev => Math.max(0, prev - 1));
@@ -109,6 +164,8 @@ function Navbar() {
             open={isNotifOpen}
             onClose={() => setIsNotifOpen(false)}
             onNotificationClick={handleNotificationClick}
+            onMarkAllRead={() => setUnreadNotifs(0)}
+            onUnreadCountChange={(count) => setUnreadNotifs(count)}
           />
 
           <button
@@ -118,9 +175,26 @@ function Navbar() {
               setIsNotifOpen(false);
             }}
             title="Open Chat & Messages"
+            style={{ position: 'relative' }}
           >
-            <div className={styles.avatarIcon}>💬</div>
+            <div className={styles.avatarIcon} style={{ background: unreadMessages > 0 ? '#e11d48' : '#0284c7' }}>💬</div>
             <span>Messages</span>
+            {unreadMessages > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: '-4px',
+                right: '-4px',
+                background: '#e11d48',
+                color: '#fff',
+                fontSize: '0.72rem',
+                fontWeight: '800',
+                borderRadius: '10px',
+                padding: '1px 6px',
+                border: '2px solid #0f172a'
+              }}>
+                {unreadMessages}
+              </span>
+            )}
           </button>
 
           <button

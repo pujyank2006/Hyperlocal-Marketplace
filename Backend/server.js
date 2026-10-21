@@ -21,6 +21,7 @@ const wishlistRoutes = require('./routes/wishlistRouter');
 const savedSearchRoutes = require('./routes/savedSearchRouter');
 const notificationRoutes = require('./routes/notificationRouter');
 const paymentRoutes = require('./routes/paymentRouter');
+const reviewRoutes = require('./routes/reviewRouter');
 
 const app = express();
 const server = http.createServer(app);
@@ -81,6 +82,7 @@ app.use('/api/v1/wishlist', wishlistRoutes);
 app.use('/api/v1/saved-searches', savedSearchRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/payments', paymentRoutes);
+app.use('/api/v1/reviews', reviewRoutes);
 
 // Legacy route aliases for backwards compatibility
 app.use('/auth', authRoutes);

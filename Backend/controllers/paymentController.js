@@ -3,6 +3,7 @@ const Order = require('../models/order');
 const Listings = require('../models/listings');
 const User = require('../models/user');
 const Notification = require('../models/notification');
+const Review = require('../models/review');
 
 let Razorpay = null;
 try {
@@ -28,6 +29,7 @@ function getRazorpayInstance() {
  * Initializes an order for a listing
  */
 exports.createOrder = async (req, res) => {
+    let reservedListingId = null;
     try {
         const buyerId = req.user.id;
         const { listingId, deliveryType } = req.body;
@@ -41,8 +43,8 @@ exports.createOrder = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Listing not found' });
         }
 
-        if (listing.status === 'Sold') {
-            return res.status(400).json({ success: false, message: 'This item has already been sold.' });
+        if (listing.status === 'Sold' || listing.status === 'Reserved') {
+            return res.status(409).json({ success: false, message: listing.status === 'Sold' ? 'This item has already been sold.' : 'This item is currently reserved.' });
         }
 
         if (listing.relatedUser.toString() === buyerId.toString()) {
@@ -109,6 +111,14 @@ exports.createOrder = async (req, res) => {
             }
         });
 
+        // Atomically reserve the listing so two buyers cannot pay for the same item.
+        const reservation = await Listings.findOneAndUpdate(
+            { _id: listing._id, status: 'Active' },
+            { $set: { status: 'Reserved' } },
+            { new: true }
+        );
+        if (!reservation) return res.status(409).json({ success: false, message: 'This item is no longer available for checkout.' });
+        reservedListingId = listing._id;
         await newOrder.save();
 
         return res.status(201).json({
@@ -120,6 +130,7 @@ exports.createOrder = async (req, res) => {
         });
 
     } catch (error) {
+        if (reservedListingId) await Listings.findByIdAndUpdate(reservedListingId, { status: 'Active' }).catch(() => {});
         console.error('Error creating order:', error);
         return res.status(500).json({ success: false, message: 'Server error creating order' });
     }
@@ -155,16 +166,23 @@ exports.verifyPayment = async (req, res) => {
             });
         }
 
+        if (order.paymentStatus !== 'created') {
+            return res.status(409).json({ success: false, message: 'This payment attempt is no longer active. Start a new checkout.' });
+        }
+
         // Verify Razorpay signature if real gateway
-        if (order.paymentGateway === 'Razorpay' && !isSandbox) {
+        if (order.paymentGateway === 'Sandbox') {
+            if (!isSandbox) return res.status(400).json({ success: false, message: 'Sandbox order requires sandbox verification.' });
+        } else {
             const secret = process.env.RAZORPAY_KEY_SECRET || '';
+            if (!secret || !gatewayOrderId || gatewayOrderId !== order.gatewayOrderId || !paymentId || !signature) {
+                return res.status(400).json({ success: false, message: 'Payment verification details are incomplete or do not match this order.' });
+            }
             const hmac = crypto.createHmac('sha256', secret);
             hmac.update(`${gatewayOrderId}|${paymentId}`);
             const generatedSignature = hmac.digest('hex');
 
             if (generatedSignature !== signature) {
-                order.paymentStatus = 'failed';
-                await order.save();
                 return res.status(400).json({ success: false, message: 'Payment verification failed: Invalid signature' });
             }
         }
@@ -174,10 +192,13 @@ exports.verifyPayment = async (req, res) => {
         order.signature = signature || 'sandbox_verified';
         order.paymentStatus = 'completed';
         order.orderStatus = 'placed';
+        order.escrowStatus = 'held';
+        order.escrowHeldAt = new Date();
+        order.returnWindowEndsAt = new Date(Date.now() + order.returnWindowDays * 24 * 60 * 60 * 1000);
         await order.save();
 
-        // Mark listing as Sold
-        await Listings.findByIdAndUpdate(order.listing, { status: 'Sold' });
+        // Reserve while funds are held; seller finalizes only after the buyer confirms handover.
+        await Listings.findByIdAndUpdate(order.listing, { status: 'Reserved' });
 
         // Create persistent notification for seller
         const notification = new Notification({
@@ -219,6 +240,86 @@ exports.verifyPayment = async (req, res) => {
 };
 
 /**
+ * POST /api/v1/payments/orders/:orderId/action
+ * Buyer/seller order lifecycle actions. Escrow values are an application ledger
+ * only; actual gateway capture, refunds and payouts require provider support.
+ */
+exports.orderAction = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { action, reason = '', details = '', evidence = [] } = req.body;
+        const order = await Order.findOne({ orderId: req.params.orderId });
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+        const isBuyer = order.buyer.toString() === userId.toString();
+        const isSeller = order.seller.toString() === userId.toString();
+        if (!isBuyer && !isSeller) return res.status(403).json({ success: false, message: 'You are not a participant in this order.' });
+
+        if (action === 'confirm-delivery') {
+            if (!isBuyer) return res.status(403).json({ success: false, message: 'Only the buyer can confirm handover.' });
+            if (order.paymentStatus !== 'completed' || order.escrowStatus !== 'held' || order.orderStatus !== 'placed') return res.status(409).json({ success: false, message: 'This order is not awaiting handover confirmation.' });
+            order.orderStatus = 'delivered';
+            order.escrowStatus = 'released';
+            order.escrowReleasedAt = new Date();
+            const listing = await Listings.findById(order.listing);
+            if (listing) { listing.status = 'Sold'; await listing.save(); }
+        } else if (action === 'request-return') {
+            if (!isBuyer) return res.status(403).json({ success: false, message: 'Only the buyer can request a return.' });
+            if (order.escrowStatus !== 'held' || order.orderStatus !== 'placed' || !order.returnWindowEndsAt || Date.now() > order.returnWindowEndsAt.getTime()) return res.status(409).json({ success: false, message: 'The return window is closed or this order is no longer eligible.' });
+            if (typeof reason !== 'string' || reason.trim().length < 3) return res.status(400).json({ success: false, message: 'Please provide a return reason.' });
+            order.orderStatus = 'return_requested';
+            order.returnReason = reason.trim().slice(0, 1000);
+            order.returnRequestedAt = new Date();
+            order.returnResolution = 'pending';
+        } else if (action === 'respond-return') {
+            if (!isSeller) return res.status(403).json({ success: false, message: 'Only the seller can respond to a return.' });
+            if (order.orderStatus !== 'return_requested' || order.returnResolution !== 'pending') return res.status(409).json({ success: false, message: 'There is no pending return request.' });
+            if (!['accept', 'reject'].includes(req.body.decision)) return res.status(400).json({ success: false, message: 'Decision must be accept or reject.' });
+            order.returnResolution = req.body.decision === 'accept' ? 'accepted' : 'rejected';
+            if (req.body.decision === 'accept') {
+                order.orderStatus = 'returned';
+                order.escrowStatus = 'refund_pending';
+            } else {
+                order.orderStatus = 'placed';
+            }
+        } else if (action === 'open-claim') {
+            if (!isBuyer) return res.status(403).json({ success: false, message: 'Only the buyer can open a damage or not-as-described claim.' });
+            if (order.escrowStatus !== 'held' || order.orderStatus !== 'placed' || !['damage', 'not_as_described', 'not_received'].includes(req.body.claimReason)) return res.status(409).json({ success: false, message: 'Claims require an eligible order and a valid claim reason.' });
+            if (typeof details !== 'string' || details.trim().length < 10) return res.status(400).json({ success: false, message: 'Please describe the issue in at least 10 characters.' });
+            order.claimReason = req.body.claimReason;
+            order.claimDetails = details.trim().slice(0, 2000);
+            order.claimEvidence = Array.isArray(evidence) ? evidence.filter(x => typeof x === 'string').slice(0, 5) : [];
+            order.claimStatus = 'open';
+            order.claimOpenedAt = new Date();
+            order.orderStatus = 'disputed';
+            order.escrowStatus = 'disputed';
+        } else if (action === 'resolve-claim') {
+            if (!isSeller) return res.status(403).json({ success: false, message: 'Only the seller can respond to this claim.' });
+            if (order.claimStatus !== 'open' || !['buyer', 'seller'].includes(req.body.decision)) return res.status(409).json({ success: false, message: 'There is no open claim or the decision is invalid.' });
+            order.claimStatus = req.body.decision === 'buyer' ? 'resolved_buyer' : 'resolved_seller';
+            order.escrowStatus = req.body.decision === 'buyer' ? 'refund_pending' : 'released';
+            order.orderStatus = req.body.decision === 'buyer' ? 'returned' : 'delivered';
+            if (req.body.decision === 'seller') order.escrowReleasedAt = new Date();
+        } else if (action === 'report-payment-failure') {
+            if (!isBuyer) return res.status(403).json({ success: false, message: 'Only the buyer can report this payment attempt.' });
+            if (order.paymentGateway !== 'Sandbox') return res.status(409).json({ success: false, message: 'Gateway payment status must be confirmed by the payment provider before releasing this reservation.' });
+            if (order.paymentStatus === 'completed') return res.status(409).json({ success: false, message: 'This payment is already completed.' });
+            order.paymentStatus = 'failed';
+            order.failureReason = String(reason || 'Payment cancelled or failed').slice(0, 500);
+            order.escrowStatus = 'pending';
+            await Listings.findOneAndUpdate({ _id: order.listing, status: 'Reserved' }, { $set: { status: 'Active' } });
+        } else {
+            return res.status(400).json({ success: false, message: 'Unsupported order action.' });
+        }
+
+        await order.save();
+        return res.json({ success: true, order, message: 'Order updated.' });
+    } catch (error) {
+        console.error('Error updating order:', error);
+        return res.status(500).json({ success: false, message: 'Server error updating order' });
+    }
+};
+
+/**
  * GET /api/v1/payments/my-orders
  * Returns purchases (as buyer) and sales (as seller)
  */
@@ -231,10 +332,25 @@ exports.getMyOrders = async (req, res) => {
             Order.find({ seller: userId }).sort({ createdAt: -1 })
         ]);
 
+        const allOrders = [...purchases, ...sales];
+        const orderReviews = allOrders.length
+            ? await Review.find({ order: { $in: allOrders.map((order) => order._id) } }).populate('reviewer', 'name').populate('reviewee', 'name').lean()
+            : [];
+        const reviewsByOrder = orderReviews.reduce((map, review) => {
+            const key = review.order.toString();
+            (map[key] ||= []).push(review);
+            return map;
+        }, {});
+        const addReviews = (orders) => orders.map((order) => {
+            const plain = order.toObject();
+            plain.reviews = reviewsByOrder[order._id.toString()] || [];
+            return plain;
+        });
+
         return res.status(200).json({
             success: true,
-            purchases: purchases || [],
-            sales: sales || []
+            purchases: addReviews(purchases || []),
+            sales: addReviews(sales || [])
         });
 
     } catch (error) {

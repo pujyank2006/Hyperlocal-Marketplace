@@ -47,6 +47,11 @@ async function markAsRead(req, res) {
 
         const unreadCount = await Notification.countDocuments({ user: userID, isRead: false });
 
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user_${userID.toString()}`).emit('notifications_read', { unreadCount });
+        }
+
         return res.status(200).json({
             success: true,
             message: "Notification marked as read",
@@ -70,6 +75,11 @@ async function markAllAsRead(req, res) {
             { user: userID, isRead: false },
             { $set: { isRead: true } }
         );
+
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user_${userID.toString()}`).emit('notifications_read', { unreadCount: 0 });
+        }
 
         return res.status(200).json({
             success: true,

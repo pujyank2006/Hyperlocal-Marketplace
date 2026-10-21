@@ -17,7 +17,7 @@ function timeAgo(dateString) {
   return `${diffDays}d ago`;
 }
 
-function NotificationDropdown({ open, onClose, onNotificationClick = () => {} }) {
+function NotificationDropdown({ open, onClose, onNotificationClick = () => {}, onMarkAllRead = () => {}, onUnreadCountChange = () => {} }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,6 +33,9 @@ function NotificationDropdown({ open, onClose, onNotificationClick = () => {} })
       .then(data => {
         if (isMounted && data.success) {
           setNotifications(data.notifications || []);
+          if (data.unreadCount !== undefined) {
+            onUnreadCountChange(data.unreadCount);
+          }
         }
       })
       .catch(err => console.error("Error fetching notifications:", err))
@@ -41,7 +44,7 @@ function NotificationDropdown({ open, onClose, onNotificationClick = () => {} })
       });
 
     return () => { isMounted = false; };
-  }, [open, user]);
+  }, [open, user, onUnreadCountChange]);
 
   // Click outside to close
   useEffect(() => {
@@ -62,6 +65,9 @@ function NotificationDropdown({ open, onClose, onNotificationClick = () => {} })
       const data = await notificationService.markAllAsRead();
       if (data.success) {
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        onMarkAllRead();
+        onUnreadCountChange(0);
+        window.dispatchEvent(new CustomEvent('notifications_read', { detail: { unreadCount: 0 } }));
       }
     } catch (err) {
       console.error("Error marking all read:", err);
@@ -71,10 +77,14 @@ function NotificationDropdown({ open, onClose, onNotificationClick = () => {} })
   const handleItemClick = async (notif) => {
     if (!notif.isRead) {
       try {
-        await notificationService.markAsRead(notif._id);
+        const res = await notificationService.markAsRead(notif._id);
         setNotifications(prev =>
           prev.map(n => n._id === notif._id ? { ...n, isRead: true } : n)
         );
+        if (res && res.unreadCount !== undefined) {
+          onUnreadCountChange(res.unreadCount);
+          window.dispatchEvent(new CustomEvent('notifications_read', { detail: { unreadCount: res.unreadCount } }));
+        }
       } catch (err) {
         console.error("Error marking notification read:", err);
       }

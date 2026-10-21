@@ -6,12 +6,14 @@ const {
   getUserConversations,
   getConversationMessages,
   sendMessage,
-  respondToOffer
+  respondToOffer,
+  getUnreadMessagesCount
 } = require('../controllers/chatController');
 
 // All chat endpoints require authentication
 router.use(verifyToken);
 
+router.get('/unread-count', getUnreadMessagesCount);
 router.post('/start', startConversation);
 router.get('/conversations', getUserConversations);
 router.get('/messages/:conversationId', getConversationMessages);

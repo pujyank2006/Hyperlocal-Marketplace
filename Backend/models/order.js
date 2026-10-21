@@ -59,9 +59,28 @@ const orderSchema = new Schema({
     },
     orderStatus: {
         type: String,
-        enum: ['placed', 'delivered', 'cancelled'],
+        enum: ['placed', 'delivered', 'cancelled', 'return_requested', 'returned', 'disputed'],
         default: 'placed'
     },
+    escrowStatus: {
+        type: String,
+        enum: ['pending', 'held', 'released', 'refund_pending', 'refunded', 'disputed'],
+        default: 'pending',
+        index: true
+    },
+    escrowHeldAt: { type: Date, default: null },
+    escrowReleasedAt: { type: Date, default: null },
+    returnWindowDays: { type: Number, default: 7 },
+    returnWindowEndsAt: { type: Date, default: null },
+    returnReason: { type: String, default: '' },
+    returnRequestedAt: { type: Date, default: null },
+    returnResolution: { type: String, enum: ['pending', 'accepted', 'rejected', null], default: null },
+    claimReason: { type: String, default: '' },
+    claimDetails: { type: String, default: '' },
+    claimEvidence: { type: [String], default: [] },
+    claimStatus: { type: String, enum: ['open', 'resolved_buyer', 'resolved_seller', null], default: null },
+    claimOpenedAt: { type: Date, default: null },
+    failureReason: { type: String, default: '' },
     deliveryType: {
         type: String,
         enum: ['local_pickup', 'direct_handover'],

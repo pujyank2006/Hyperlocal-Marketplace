@@ -45,28 +45,27 @@ function PaymentModal({ listing, isOpen, onClose, onPaymentSuccess, onViewInvoic
         return;
       }
 
-      const orderData = createRes.order;
-      const verifyRes = await paymentService.verifyPayment({
-        orderId: orderData.orderId,
-        paymentId: `sandbox_pay_${Date.now()}`,
-        gatewayOrderId: orderData.gatewayOrderId,
-        signature: 'sandbox_test_signature',
-        isSandbox: true
-      });
-
-      if (verifyRes.success) {
-        setCompletedOrder(verifyRes.order);
-        handleSuccess('🎉 Payment successful! Item purchased.');
-        if (onPaymentSuccess) onPaymentSuccess(verifyRes.order);
-      } else {
-        handleError(verifyRes.message || 'Payment verification failed');
-      }
+      await verifySandboxOrder(createRes.order);
     } catch (err) {
       console.error('Payment error:', err);
       handleError(err.message || 'Payment failed');
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const verifySandboxOrder = async (orderData) => {
+    const verifyRes = await paymentService.verifyPayment({
+      orderId: orderData.orderId,
+      paymentId: `sandbox_pay_${Date.now()}`,
+      gatewayOrderId: orderData.gatewayOrderId,
+      signature: 'sandbox_test_signature',
+      isSandbox: true
+    });
+    if (!verifyRes.success) throw new Error(verifyRes.message || 'Payment verification failed');
+    setCompletedOrder(verifyRes.order);
+    handleSuccess('🎉 Payment verified! Funds are held until handover is confirmed.');
+    if (onPaymentSuccess) onPaymentSuccess(verifyRes.order);
   };
 
   // Process Real Razorpay Payment
@@ -91,8 +90,9 @@ function PaymentModal({ listing, isOpen, onClose, onPaymentSuccess, onViewInvoic
       const keyId = createRes.keyId;
 
       if (!keyId || createRes.isSandbox) {
-        // Fallback to Sandbox if keys are missing
-        await handleSandboxPayment();
+        // Use the order already created above; avoid duplicate pending orders.
+        await verifySandboxOrder(order);
+        setIsProcessing(false);
         return;
       }
 
@@ -135,6 +135,7 @@ function PaymentModal({ listing, isOpen, onClose, onPaymentSuccess, onViewInvoic
         },
         modal: {
           ondismiss: function () {
+            paymentService.orderAction(order.orderId, { action: 'report-payment-failure', reason: 'Checkout was closed before payment completed.' }).catch(() => {});
             setIsProcessing(false);
           }
         }
@@ -166,16 +167,16 @@ function PaymentModal({ listing, isOpen, onClose, onPaymentSuccess, onViewInvoic
             /* SUCCESS VIEW */
             <div className={styles.successBox}>
               <div className={styles.successIcon}>🎉</div>
-              <h2 className={styles.successTitle}>Payment Successful!</h2>
+              <h2 className={styles.successTitle}>Payment secured</h2>
               <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
-                You have successfully purchased <strong>{completedOrder.metadata?.listingTitle}</strong>.
+                Payment for <strong>{completedOrder.metadata?.listingTitle}</strong> is recorded. Confirm handover in Purchases to release the hold.
               </p>
               <div className={styles.orderIdPill}>
                 Order ID: {completedOrder.orderId}
               </div>
               <div className={styles.breakdownBox} style={{ width: '100%', textAlign: 'left', marginTop: '6px' }}>
                 <div className={styles.breakdownRow}>
-                  <span>Amount Paid:</span>
+                  <span>Amount held:</span>
                   <strong>₹{completedOrder.amount}</strong>
                 </div>
                 <div className={styles.breakdownRow}>
@@ -277,7 +278,7 @@ function PaymentModal({ listing, isOpen, onClose, onPaymentSuccess, onViewInvoic
 
               <div className={styles.securityNote}>
                 <span>🔒</span>
-                <span>256-Bit SSL Encrypted & Protected Hyperlocal Checkout</span>
+                <span>Prototype protection ledger only: payment is charged immediately; this app does not hold, release, or refund real funds.</span>
               </div>
             </>
           )}

@@ -70,6 +70,7 @@ export const chatService = {
   getMessages: (conversationId) => request(`/chat/messages/${conversationId}`, { method: 'GET' }),
   sendMessage: (conversationId, text, offerPrice) => request('/chat/message', { method: 'POST', body: JSON.stringify({ conversationId, text, offerPrice }) }),
   respondOffer: (messageId, status) => request(`/chat/offer/${messageId}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  getUnreadCount: () => request('/chat/unread-count', { method: 'GET' }),
 };
 
 // Wishlist Services
@@ -104,6 +105,16 @@ export const paymentService = {
     request('/payments/my-orders', { method: 'GET' }),
   getOrderInvoice: (orderId) =>
     request(`/payments/orders/${orderId}`, { method: 'GET' }),
+  orderAction: (orderId, payload) =>
+    request(`/payments/orders/${orderId}/action`, { method: 'POST', body: JSON.stringify(payload) }),
+};
+
+// Transaction-verified reviews and reputation
+export const reviewService = {
+  getMyTrustSummary: () => request('/reviews/me', { method: 'GET' }),
+  createReview: (orderId, rating, text) => request('/reviews', {
+    method: 'POST', body: JSON.stringify({ orderId, rating, text })
+  }),
 };
 
 

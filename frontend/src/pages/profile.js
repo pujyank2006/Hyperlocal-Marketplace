@@ -10,7 +10,7 @@ import EditListing from '../Components/editListing';
 import { SkeletonGrid } from '../Components/SkeletonLoader';
 import InvoiceModal from '../Components/InvoiceModal';
 import { useAuth } from '../context/AuthContext';
-import { userService, listingService, wishlistService, savedSearchService, paymentService } from '../services/api';
+import { userService, listingService, wishlistService, savedSearchService, paymentService, reviewService } from '../services/api';
 import { handleError, handleSuccess, fetchPincodeCoordinates } from '../utils';
 
 function Profile() {
@@ -33,6 +33,11 @@ function Profile() {
   const [ordersSales, setOrdersSales] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [activeInvoiceOrder, setActiveInvoiceOrder] = useState(null);
+  const [trustSummary, setTrustSummary] = useState({ averageRating: null, reviewCount: 0, completedOrders: 0, badges: [], reviews: [] });
+  const [reviewingOrderId, setReviewingOrderId] = useState(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   // Edit Modal State
   const [editingListing, setEditingListing] = useState(null);
@@ -327,12 +332,82 @@ function Profile() {
         setOrdersPurchases(res.purchases || []);
         setOrdersSales(res.sales || []);
       }
+      const trust = await reviewService.getMyTrustSummary();
+      if (trust.success) setTrustSummary(trust.summary);
     } catch (err) {
       console.error("Error fetching orders:", err);
     } finally {
       setIsLoadingOrders(false);
     }
   }, []);
+
+  const handleOrderAction = async (order, action, extra = {}) => {
+    try {
+      const result = await paymentService.orderAction(order.orderId, { action, ...extra });
+      if (result.success) {
+        handleSuccess(result.message || 'Order updated');
+        await fetchOrders();
+      }
+    } catch (err) {
+      handleError(err.message || 'Could not update order');
+    }
+  };
+
+  const requestReturn = (order) => {
+    const reason = window.prompt('Why are you requesting a return?');
+    if (reason) handleOrderAction(order, 'request-return', { reason });
+  };
+
+  const openDamageClaim = (order) => {
+    const details = window.prompt('Describe the damage or issue (at least 10 characters):');
+    if (details) handleOrderAction(order, 'open-claim', { claimReason: 'damage', details });
+  };
+
+  const handleSubmitReview = async (e, order) => {
+    e.preventDefault();
+    try {
+      setIsSubmittingReview(true);
+      await reviewService.createReview(order.orderId, Number(reviewRating), reviewText);
+      handleSuccess('Review posted');
+      setReviewingOrderId(null);
+      setReviewText('');
+      await fetchOrders();
+    } catch (err) {
+      handleError(err.message || 'Could not post review');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  const renderOrderReviews = (order) => {
+    const reviews = order.reviews || [];
+    const existingReview = reviews.find((review) => String(review.reviewer?._id || review.reviewer) === String(user?._id));
+    const eligible = order.paymentStatus === 'completed' && order.orderStatus === 'delivered' && order.escrowStatus === 'released';
+    return (
+      <div style={{ marginTop: 10 }}>
+        {reviews.map((review) => (
+          <div key={review._id} style={{ fontSize: '0.82rem', color: '#475569', marginTop: 5 }}>
+            <strong>{review.reviewer?.name || 'Participant'}</strong> · {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}{review.text ? ` · ${review.text}` : ''}
+          </div>
+        ))}
+        {eligible && !existingReview && (reviewingOrderId === order.orderId ? (
+          <form onSubmit={(e) => handleSubmitReview(e, order)} style={{ display: 'grid', gap: 8, marginTop: 10, maxWidth: 420 }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 700 }}>Rate this transaction
+              <select value={reviewRating} onChange={(e) => setReviewRating(e.target.value)} style={{ marginLeft: 8 }}>
+                {[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} star{rating > 1 ? 's' : ''}</option>)}
+              </select>
+            </label>
+            <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} maxLength={1000} placeholder="Share a helpful note (optional)" rows={3} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="submit" className={styles.invoiceBtn} disabled={isSubmittingReview}>{isSubmittingReview ? 'Posting…' : 'Post review'}</button>
+              <button type="button" className={styles.invoiceBtn} onClick={() => setReviewingOrderId(null)}>Cancel</button>
+            </div>
+          </form>
+        ) : <button type="button" className={styles.invoiceBtn} style={{ marginTop: 8 }} onClick={() => { setReviewRating(5); setReviewText(''); setReviewingOrderId(order.orderId); }}>Rate transaction</button>)}
+        {eligible && existingReview && <span style={{ display: 'inline-block', marginTop: 8, color: '#15803d', fontSize: '0.82rem', fontWeight: 700 }}>✓ You reviewed this transaction</span>}
+      </div>
+    );
+  };
 
   // Sync tab with URL searchParams
   useEffect(() => {
@@ -538,6 +613,16 @@ function Profile() {
           </div>
         </div>
 
+        <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 20px', margin: '0 0 18px', boxShadow: '0 4px 16px rgba(15,23,42,.04)' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#0f172a' }}>⭐ Community reputation</h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, color: '#475569', fontSize: '0.9rem' }}>
+            <strong>{trustSummary.averageRating ? `${trustSummary.averageRating} / 5` : 'No ratings yet'}</strong>
+            <span>({trustSummary.reviewCount} reviews)</span>
+            <span>· {trustSummary.completedOrders} completed handovers</span>
+            {trustSummary.badges.map((badge) => <span key={badge.id} title={badge.description} style={{ background: '#ecfdf5', color: '#047857', borderRadius: 20, padding: '5px 10px', fontWeight: 700 }}>✓ {badge.label}</span>)}
+          </div>
+        </section>
+
         {/* TABS & CONTENT SECTION */}
         <div className={styles.listings}>
           {/* TAB SWITCHER */}
@@ -709,14 +794,23 @@ function Profile() {
                             <span>👤 Seller: <strong>{order.metadata?.sellerName}</strong> ({order.metadata?.sellerCity || 'Local'})</span>
                             <span>📅 {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                             <span style={{ color: '#16a34a', fontWeight: '700' }}>
-                              ✓ {order.deliveryType === 'local_pickup' ? '📍 Local Pickup' : '🤝 Direct Handover'}
+                              {order.orderStatus === 'delivered' ? '✓ Handover confirmed' : `⏳ ${order.escrowStatus || order.paymentStatus}`} · {order.deliveryType === 'local_pickup' ? '📍 Local Pickup' : '🤝 Direct Handover'}
                             </span>
+                            {order.returnWindowEndsAt && order.escrowStatus === 'held' && <span>Returns by {new Date(order.returnWindowEndsAt).toLocaleDateString('en-IN')}</span>}
+                            {order.claimStatus === 'open' && <span style={{ color: '#b45309', fontWeight: 700 }}>⚠️ Claim under review: {order.claimReason}</span>}
+                            {order.orderStatus === 'return_requested' && <span style={{ color: '#b45309', fontWeight: 700 }}>↩ Return requested: {order.returnReason}</span>}
                           </div>
+                          {renderOrderReviews(order)}
                         </div>
                       </div>
 
                       <div className={styles.orderRight}>
                         <div className={styles.orderPrice}>₹{Number(order.amount).toLocaleString('en-IN')}</div>
+                        {order.escrowStatus === 'held' && order.orderStatus !== 'return_requested' && order.claimStatus !== 'open' && <>
+                          <button type="button" className={styles.invoiceBtn} onClick={() => handleOrderAction(order, 'confirm-delivery')}>Confirm handover</button>
+                          <button type="button" className={styles.invoiceBtn} onClick={() => requestReturn(order)}>Request return</button>
+                          <button type="button" className={styles.invoiceBtn} onClick={() => openDamageClaim(order)}>Report issue</button>
+                        </>}
                         <button
                           type="button"
                           className={styles.invoiceBtn}
@@ -772,13 +866,24 @@ function Profile() {
                             <span className={styles.criteriaTag}>📁 {order.metadata?.listingCategory}</span>
                             <span>👤 Buyer: <strong>{order.metadata?.buyerName}</strong> ({order.metadata?.buyerCity || 'Local'})</span>
                             <span>📅 {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                            <span style={{ color: '#16a34a', fontWeight: '700' }}>✓ PAID & VERIFIED</span>
+                            <span style={{ color: order.escrowStatus === 'held' ? '#b45309' : '#16a34a', fontWeight: '700' }}>{order.paymentStatus?.toUpperCase()} · {order.escrowStatus?.replace('_', ' ').toUpperCase()}</span>
+                            {order.returnReason && <span>↩ Return: {order.returnReason} ({order.returnResolution})</span>}
+                            {order.claimStatus === 'open' && <span style={{ color: '#b45309', fontWeight: 700 }}>⚠️ Claim: {order.claimReason} — {order.claimDetails}</span>}
                           </div>
+                          {renderOrderReviews(order)}
                         </div>
                       </div>
 
                       <div className={styles.orderRight}>
                         <div className={styles.orderPrice} style={{ color: '#16a34a' }}>+₹{Number(order.amount).toLocaleString('en-IN')}</div>
+                        {order.orderStatus === 'return_requested' && order.returnResolution === 'pending' && <>
+                          <button type="button" className={styles.invoiceBtn} onClick={() => handleOrderAction(order, 'respond-return', { decision: 'accept' })}>Accept return</button>
+                          <button type="button" className={styles.invoiceBtn} onClick={() => handleOrderAction(order, 'respond-return', { decision: 'reject' })}>Decline return</button>
+                        </>}
+                        {order.claimStatus === 'open' && <>
+                          <button type="button" className={styles.invoiceBtn} onClick={() => handleOrderAction(order, 'resolve-claim', { decision: 'buyer' })}>Resolve for buyer</button>
+                          <button type="button" className={styles.invoiceBtn} onClick={() => handleOrderAction(order, 'resolve-claim', { decision: 'seller' })}>Resolve for seller</button>
+                        </>}
                         <button
                           type="button"
                           className={styles.invoiceBtn}

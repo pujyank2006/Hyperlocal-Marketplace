@@ -92,10 +92,21 @@ async function getConversationMessages(req, res) {
       { $set: { isRead: true } }
     );
 
+    const unreadCount = await Message.countDocuments({ receiver: userId, isRead: false });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user_${userId.toString()}`).emit('messages_read', {
+        conversationId,
+        unreadCount
+      });
+    }
+
     const messages = await Message.find({ conversationId }).sort({ createdAt: 1 });
 
     return res.status(200).json({
       success: true,
+      unreadCount,
       messages
     });
   } catch (error) {
@@ -153,9 +164,15 @@ async function sendMessage(req, res) {
     const messageJson = newMessage.toJSON();
     if (io) {
       io.to(conversationId.toString()).emit('receive_message', messageJson);
+
+      const sender = await User.findById(senderId).select('name');
+      const senderName = sender ? sender.name : 'Someone';
+
       io.to(`user_${receiverId.toString()}`).emit('new_message_notification', {
         conversationId,
         senderId,
+        senderName,
+        text: messageText.trim(),
         message: messageJson
       });
     }
@@ -221,6 +238,17 @@ async function respondToOffer(req, res) {
         status,
         responseMsg: responseJson
       });
+
+      const responder = await User.findById(userId).select('name');
+      const responderName = responder ? responder.name : 'Seller';
+
+      io.to(`user_${message.sender.toString()}`).emit('new_message_notification', {
+        conversationId: message.conversationId,
+        senderId: userId,
+        senderName: responderName,
+        text: statusText,
+        message: responseJson
+      });
     }
 
     return res.status(200).json({
@@ -234,10 +262,29 @@ async function respondToOffer(req, res) {
   }
 }
 
+// Get total count of unread messages for the current user across all conversations
+async function getUnreadMessagesCount(req, res) {
+  try {
+    const userId = req.user.id;
+    const unreadCount = await Message.countDocuments({
+      receiver: userId,
+      isRead: false
+    });
+    return res.status(200).json({
+      success: true,
+      unreadCount
+    });
+  } catch (error) {
+    console.error("Error in getUnreadMessagesCount:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+}
+
 module.exports = {
   startConversation,
   getUserConversations,
   getConversationMessages,
   sendMessage,
-  respondToOffer
+  respondToOffer,
+  getUnreadMessagesCount
 };

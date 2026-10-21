@@ -3,6 +3,7 @@ const User = require('../models/user');
 const Wishlist = require('../models/wishlist');
 const { resolveCoordinates, calculateDistanceKm } = require('../utils/geoUtils');
 const { checkAndNotifyMatches } = require('./savedSearchController');
+const { buildTrustSummary } = require('./reviewController');
 
 async function addNewListings(req, res) {
     try {
@@ -235,13 +236,15 @@ async function getListingDetails(req, res) {
         if (listing.relatedUser) {
             const seller = await User.findById(listing.relatedUser).select("name email phone state city area pincode");
             if (seller) {
+                const trustSummary = await buildTrustSummary(seller._id);
                 sellerInfo = {
                     name: seller.name,
                     phone: seller.phone,
                     email: seller.email,
                     city: seller.city,
                     area: seller.area,
-                    pincode: seller.pincode
+                    pincode: seller.pincode,
+                    trustSummary
                 };
             }
         }
