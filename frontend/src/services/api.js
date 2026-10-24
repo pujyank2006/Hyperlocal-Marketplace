@@ -97,8 +97,8 @@ export const notificationService = {
 
 // Payment & Order Ledger Services
 export const paymentService = {
-  createOrder: (listingId, deliveryType = 'local_pickup') =>
-    request('/payments/create-order', { method: 'POST', body: JSON.stringify({ listingId, deliveryType }) }),
+  createOrder: (listingId, deliveryType = 'local_pickup', offerMessageId = null) =>
+    request('/payments/create-order', { method: 'POST', body: JSON.stringify({ listingId, deliveryType, ...(offerMessageId ? { offerMessageId } : {}) }) }),
   verifyPayment: (payload) =>
     request('/payments/verify-payment', { method: 'POST', body: JSON.stringify(payload) }),
   getMyOrders: () =>

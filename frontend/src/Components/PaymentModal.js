@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { paymentService } from '../services/api';
 import { handleSuccess, handleError } from '../utils';
 import styles from '../ComponentStyles/paymentModal.module.css';
@@ -19,14 +19,21 @@ function loadRazorpayScript() {
   });
 }
 
-function PaymentModal({ listing, isOpen, onClose, onPaymentSuccess, onViewInvoice }) {
+function PaymentModal({ listing, isOpen, onClose, onPaymentSuccess, onViewInvoice, offerMessageId = null, agreedPrice = null }) {
   const [deliveryType, setDeliveryType] = useState('local_pickup');
   const [isProcessing, setIsProcessing] = useState(false);
   const [completedOrder, setCompletedOrder] = useState(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      setCompletedOrder(null);
+      setDeliveryType('local_pickup');
+    }
+  }, [isOpen, listing?._id, offerMessageId]);
+
   if (!isOpen || !listing) return null;
 
-  const price = Number(listing.price) || 0;
+  const price = Number(agreedPrice ?? listing.price) || 0;
   const platformFee = 0; // Hyperlocal platform zero-fee promotion
   const totalAmount = price + platformFee;
 
@@ -38,7 +45,7 @@ function PaymentModal({ listing, isOpen, onClose, onPaymentSuccess, onViewInvoic
   const handleSandboxPayment = async () => {
     try {
       setIsProcessing(true);
-      const createRes = await paymentService.createOrder(listing._id, deliveryType);
+      const createRes = await paymentService.createOrder(listing._id, deliveryType, offerMessageId);
       if (!createRes.success) {
         handleError(createRes.message || 'Could not initiate order');
         setIsProcessing(false);
@@ -79,7 +86,7 @@ function PaymentModal({ listing, isOpen, onClose, onPaymentSuccess, onViewInvoic
         return;
       }
 
-      const createRes = await paymentService.createOrder(listing._id, deliveryType);
+      const createRes = await paymentService.createOrder(listing._id, deliveryType, offerMessageId);
       if (!createRes.success) {
         handleError(createRes.message || 'Could not initiate order');
         setIsProcessing(false);
@@ -101,7 +108,7 @@ function PaymentModal({ listing, isOpen, onClose, onPaymentSuccess, onViewInvoic
         amount: Math.round(order.amount * 100),
         currency: 'INR',
         name: 'Hyperlocal Marketplace',
-        description: `Purchase: ${listing.title}`,
+        description: `${offerMessageId ? 'Accepted offer' : 'Purchase'}: ${listing.title}`,
         order_id: order.gatewayOrderId,
         handler: async function (response) {
           try {
@@ -115,7 +122,7 @@ function PaymentModal({ listing, isOpen, onClose, onPaymentSuccess, onViewInvoic
 
             if (verifyRes.success) {
               setCompletedOrder(verifyRes.order);
-              handleSuccess('🎉 Payment verified! Item purchased.');
+              handleSuccess('🎉 Payment verified at the accepted offer price.');
               if (onPaymentSuccess) onPaymentSuccess(verifyRes.order);
             } else {
               handleError(verifyRes.message || 'Signature verification failed');
@@ -223,7 +230,7 @@ function PaymentModal({ listing, isOpen, onClose, onPaymentSuccess, onViewInvoic
                     <span className={styles.categoryTag}>{listing.category}</span>
                     <span>📍 {listing.area || listing.city || 'Local Area'}</span>
                   </div>
-                  <div className={styles.itemPrice}>₹{price.toLocaleString('en-IN')}</div>
+                <div className={styles.itemPrice}>{offerMessageId ? 'Accepted offer: ' : ''}₹{price.toLocaleString('en-IN')}</div>
                 </div>
               </div>
 

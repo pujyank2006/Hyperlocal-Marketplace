@@ -27,7 +27,7 @@ const messageSchema = new Schema({
   },
   offerStatus: {
     type: String,
-    enum: ['pending', 'accepted', 'rejected', null],
+    enum: ['pending', 'accepted', 'rejected', 'paid', null],
     default: null
   },
   isRead: {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 
 import styles from "../styles/dashboard.module.css";
@@ -26,6 +26,8 @@ const CATEGORIES = [
 ];
 
 function Dashboard() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [listings, setListings] = useState([]);
   const [userLocation, setUserLocation] = useState({ pincode: '', city: '', latitude: null, longitude: null });
@@ -57,7 +59,17 @@ function Dashboard() {
   // Auth User & Payment Checkout State
   const { user } = useAuth();
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [checkoutOffer, setCheckoutOffer] = useState(null);
   const [activeInvoiceOrder, setActiveInvoiceOrder] = useState(null);
+
+  useEffect(() => {
+    const offer = location.state?.checkoutOffer;
+    if (!offer) return;
+    setSelectedItem(offer.listing);
+    setCheckoutOffer(offer);
+    setIsPaymentOpen(true);
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+  }, [location.state, location.pathname, location.search, navigate]);
 
   // Sync incoming searchParams if applied from Saved Searches tab
   useEffect(() => {
@@ -146,13 +158,20 @@ function Dashboard() {
   const handlePaymentSuccess = (completedOrder) => {
     setListings(prev =>
       prev.map(item =>
-        item._id === completedOrder.listing ? { ...item, status: 'Sold' } : item
+        item._id === completedOrder.listing ? { ...item, status: 'Reserved' } : item
       )
     );
     if (selectedItem && selectedItem._id === completedOrder.listing) {
-      setSelectedItem(prev => ({ ...prev, status: 'Sold' }));
+      setSelectedItem(prev => ({ ...prev, status: 'Reserved' }));
     }
     fetchFeed();
+  };
+
+  const handlePayForAcceptedOffer = (offer) => {
+    setSelectedItem(offer.listing);
+    setCheckoutOffer(offer);
+    setChatTarget({ isOpen: false, listingId: null, sellerId: null });
+    setIsPaymentOpen(true);
   };
 
   const fetchFeed = useCallback(async () => {
@@ -227,7 +246,7 @@ function Dashboard() {
   return (
     <>
       {/* UNIFIED MODERN HEADER */}
-      <Navbar />
+      <Navbar onPayForOffer={handlePayForAcceptedOffer} />
 
       {/* BODY */}
       <div className={styles.container}>
@@ -596,7 +615,7 @@ function Dashboard() {
                       border: 'none',
                       cursor: 'pointer'
                     }}
-                    onClick={() => setIsPaymentOpen(true)}
+                    onClick={() => { setCheckoutOffer(null); setIsPaymentOpen(true); }}
                   >
                     💳 Buy Now — ₹{Number(selectedItem.price).toLocaleString('en-IN')}
                   </button>
@@ -766,7 +785,9 @@ function Dashboard() {
       <PaymentModal
         isOpen={isPaymentOpen}
         listing={selectedItem}
-        onClose={() => setIsPaymentOpen(false)}
+        offerMessageId={checkoutOffer?.offerMessageId || null}
+        agreedPrice={checkoutOffer?.amount ?? null}
+        onClose={() => { setIsPaymentOpen(false); setCheckoutOffer(null); }}
         onPaymentSuccess={handlePaymentSuccess}
         onViewInvoice={(order) => setActiveInvoiceOrder(order)}
       />
@@ -783,6 +804,7 @@ function Dashboard() {
         onClose={() => setChatTarget({ isOpen: false, listingId: null, sellerId: null })}
         initialListingId={chatTarget.listingId}
         initialSellerId={chatTarget.sellerId}
+        onPayForOffer={handlePayForAcceptedOffer}
       />
 
       <ToastContainer />

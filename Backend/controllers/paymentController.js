@@ -4,6 +4,8 @@ const Listings = require('../models/listings');
 const User = require('../models/user');
 const Notification = require('../models/notification');
 const Review = require('../models/review');
+const Message = require('../models/message');
+const Conversation = require('../models/conversation');
 
 let Razorpay = null;
 try {
@@ -32,7 +34,7 @@ exports.createOrder = async (req, res) => {
     let reservedListingId = null;
     try {
         const buyerId = req.user.id;
-        const { listingId, deliveryType } = req.body;
+        const { listingId, deliveryType, offerMessageId } = req.body;
 
         if (!listingId) {
             return res.status(400).json({ success: false, message: 'listingId is required' });
@@ -51,6 +53,29 @@ exports.createOrder = async (req, res) => {
             return res.status(400).json({ success: false, message: 'You cannot purchase your own listing.' });
         }
 
+        let agreedAmount = listing.price;
+        let acceptedOffer = null;
+        if (offerMessageId) {
+            acceptedOffer = await Message.findById(offerMessageId);
+            if (!acceptedOffer || !acceptedOffer.offerPrice || acceptedOffer.offerStatus !== 'accepted') {
+                return res.status(409).json({ success: false, message: 'This offer is unavailable or has not been accepted.' });
+            }
+            const validOfferConversation = await Conversation.findOne({
+                _id: acceptedOffer.conversationId,
+                listingId: listing._id,
+                participants: { $all: [buyerId, listing.relatedUser] }
+            }).select('_id');
+            if (!validOfferConversation || acceptedOffer.sender.toString() !== buyerId.toString() || acceptedOffer.receiver.toString() !== listing.relatedUser.toString()) {
+                return res.status(403).json({ success: false, message: 'Only the buyer who made the accepted offer can pay it.' });
+            }
+            agreedAmount = Number(acceptedOffer.offerPrice);
+            if (!Number.isFinite(agreedAmount) || agreedAmount <= 0) {
+                return res.status(400).json({ success: false, message: 'The accepted offer has an invalid amount.' });
+            }
+            const priorCompletedOrder = await Order.findOne({ acceptedOfferMessage: acceptedOffer._id, paymentStatus: 'completed' }).select('_id');
+            if (priorCompletedOrder) return res.status(409).json({ success: false, message: 'This accepted offer has already been paid.' });
+        }
+
         const buyer = await User.findById(buyerId);
         const seller = await User.findById(listing.relatedUser);
 
@@ -65,7 +90,7 @@ exports.createOrder = async (req, res) => {
         if (rzp) {
             try {
                 const rzpOrder = await rzp.orders.create({
-                    amount: Math.round(listing.price * 100), // amount in smallest currency unit (paise)
+                    amount: Math.round(agreedAmount * 100), // amount in smallest currency unit (paise)
                     currency: 'INR',
                     receipt: orderId
                 });
@@ -86,7 +111,8 @@ exports.createOrder = async (req, res) => {
             buyer: buyerId,
             seller: listing.relatedUser,
             listing: listing._id,
-            amount: listing.price,
+            acceptedOfferMessage: acceptedOffer?._id || null,
+            amount: agreedAmount,
             currency: 'INR',
             paymentGateway: gateway,
             gatewayOrderId,
@@ -97,7 +123,7 @@ exports.createOrder = async (req, res) => {
                 listingTitle: listing.title || 'Marketplace Item',
                 listingCategory: listing.category || 'General',
                 listingImage: listing.images && listing.images.length > 0 ? listing.images[0] : '',
-                listingPrice: listing.price || 0,
+                listingPrice: agreedAmount,
                 sellerName: seller ? seller.name : (listing.owner || 'Seller'),
                 sellerCity: seller ? seller.city : (listing.city || ''),
                 sellerArea: seller ? seller.area : (listing.area || ''),
@@ -199,6 +225,9 @@ exports.verifyPayment = async (req, res) => {
 
         // Reserve while funds are held; seller finalizes only after the buyer confirms handover.
         await Listings.findByIdAndUpdate(order.listing, { status: 'Reserved' });
+        const paidOffer = order.acceptedOfferMessage
+            ? await Message.findByIdAndUpdate(order.acceptedOfferMessage, { $set: { offerStatus: 'paid' } }, { new: true })
+            : null;
 
         // Create persistent notification for seller
         const notification = new Notification({
@@ -214,6 +243,7 @@ exports.verifyPayment = async (req, res) => {
         // Real-time socket emission to seller
         const io = req.app.get('io');
         if (io) {
+            if (paidOffer) io.to(paidOffer.conversationId.toString()).emit('offer_updated', { messageId: paidOffer._id, status: 'paid' });
             const payload = {
                 notificationId: notification._id,
                 title: notification.title,

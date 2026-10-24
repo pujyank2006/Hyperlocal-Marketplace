@@ -26,6 +26,12 @@ const orderSchema = new Schema({
         required: true,
         index: true
     },
+    acceptedOfferMessage: {
+        type: Schema.Types.ObjectId,
+        ref: 'Message',
+        default: null,
+        index: true
+    },
     amount: {
         type: Number,
         required: true

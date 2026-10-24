@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { chatService } from '../services/api';
 import { handleError, handleSuccess } from '../utils';
@@ -14,7 +15,8 @@ const isSameId = (a, b) => {
   return String(idA) === String(idB);
 };
 
-function ChatWidget({ isOpen, onClose, initialConversationId = null, initialListingId = null, initialSellerId = null }) {
+function ChatWidget({ isOpen, onClose, initialConversationId = null, initialListingId = null, initialSellerId = null, onPayForOffer }) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [activeConv, setActiveConv] = useState(null);
@@ -340,6 +342,7 @@ function ChatWidget({ isOpen, onClose, initialConversationId = null, initialList
                           <div>
                             {msg.offerStatus === 'pending' && <span className={styles.offerBadgePending}>⏳ Pending Response</span>}
                             {msg.offerStatus === 'accepted' && <span className={styles.offerBadgeAccepted}>✅ Offer Accepted</span>}
+                            {msg.offerStatus === 'paid' && <span className={styles.offerBadgeAccepted}>✅ Paid</span>}
                             {msg.offerStatus === 'rejected' && <span className={styles.offerBadgeRejected}>❌ Offer Declined</span>}
                           </div>
 
@@ -359,6 +362,23 @@ function ChatWidget({ isOpen, onClose, initialConversationId = null, initialList
                                 Decline
                               </button>
                             </div>
+                          )}
+                          {isSelf && msg.offerStatus === 'accepted' && activeConv.listingId && (
+                            <button
+                              type="button"
+                              className={styles.acceptBtn}
+                              style={{ marginTop: 8, width: '100%' }}
+                              onClick={() => {
+                                const offer = { listing: activeConv.listingId, offerMessageId: msg._id, amount: msg.offerPrice };
+                                if (onPayForOffer) onPayForOffer(offer);
+                                else {
+                                  onClose?.();
+                                  navigate('/dashboard', { state: { checkoutOffer: offer } });
+                                }
+                              }}
+                            >
+                              💳 Pay accepted offer · ₹{Number(msg.offerPrice).toLocaleString('en-IN')}
+                            </button>
                           )}
                         </div>
                       ) : (

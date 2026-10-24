@@ -2,6 +2,7 @@ const Conversation = require('../models/conversation');
 const Message = require('../models/message');
 const Listings = require('../models/listings');
 const User = require('../models/user');
+const Order = require('../models/order');
 
 // Start or get existing conversation for a listing
 async function startConversation(req, res) {
@@ -207,8 +208,28 @@ async function respondToOffer(req, res) {
       return res.status(403).json({ success: false, message: "Only the offer recipient can respond to this offer" });
     }
 
-    message.offerStatus = status;
-    await message.save();
+    if (message.offerStatus !== 'pending') {
+      return res.status(409).json({ success: false, message: 'This offer has already been answered.' });
+    }
+
+    if (status === 'accepted') {
+      const conversation = await Conversation.findById(message.conversationId).populate('listingId', 'relatedUser status');
+      if (!conversation?.listingId || conversation.listingId.relatedUser.toString() !== userId.toString()) {
+        return res.status(403).json({ success: false, message: 'Only the listing owner can accept an offer.' });
+      }
+      if (conversation.listingId.status !== 'Active') {
+        return res.status(409).json({ success: false, message: 'This listing is no longer available for offers.' });
+      }
+      const alreadyPaid = await Order.findOne({ acceptedOfferMessage: message._id, paymentStatus: 'completed' }).select('_id');
+      if (alreadyPaid) return res.status(409).json({ success: false, message: 'This offer has already been paid.' });
+    }
+
+    const updatedOffer = await Message.findOneAndUpdate(
+      { _id: message._id, receiver: userId, offerStatus: 'pending' },
+      { $set: { offerStatus: status } },
+      { new: true }
+    );
+    if (!updatedOffer) return res.status(409).json({ success: false, message: 'This offer has already been answered.' });
 
     // Also send an automated response message in the conversation
     const statusText = status === 'accepted'
@@ -228,7 +249,7 @@ async function respondToOffer(req, res) {
       lastMessageTime: new Date()
     });
 
-    const offerJson = message.toJSON();
+    const offerJson = updatedOffer.toJSON();
     const responseJson = responseMsg.toJSON();
 
     const io = req.app.get('io');

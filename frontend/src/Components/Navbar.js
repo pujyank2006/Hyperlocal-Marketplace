@@ -11,7 +11,7 @@ import NotificationDropdown from './NotificationDropdown';
 
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:9000";
 
-function Navbar() {
+function Navbar({ onPayForOffer }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isAccountOpen, setAccountOpen] = useState(false);
@@ -215,6 +215,7 @@ function Navbar() {
       <ChatWidget
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
+        onPayForOffer={onPayForOffer}
       />
     </>
   );
